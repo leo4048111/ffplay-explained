@@ -108,18 +108,28 @@ const int program_birth_year = 2003;
 #define USE_ONEPASS_SUBTITLE_RENDER 1
 
 typedef struct MyAVPacketList {
+    /* 待解码数据 */
     AVPacket *pkt;
+    /* pkt序列号 */
     int serial;
 } MyAVPacketList;
 
 typedef struct PacketQueue {
+    /* ffmpeg封装的队列数据结构，里面的数据对象是MyAVPacketList */
     AVFifo *pkt_list;
+    /* 队列中当前的packet数 */
     int nb_packets;
+    /* 队列所有节点占用的总内存大小 */
     int size;
+    /* 队列中所有节点的合计时长 */
     int64_t duration;
+    /* 终止队列操作信号，用于安全快速退出播放 */
     int abort_request;
+    /* 序列号，和MyAVPacketList中的序列号作用相同，但改变的时序略有不同 */
     int serial;
+    /* 互斥锁，用于保护队列操作 */
     SDL_mutex *mutex;
+    /* 条件变量，用于读写进程的相互通知 */
     SDL_cond *cond;
 } PacketQueue;
 
