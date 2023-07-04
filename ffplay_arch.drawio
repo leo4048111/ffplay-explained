@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="FdFCppq6Der4e5SaIO5y" name="Page-1">
-        <mxGraphModel dx="320" dy="729" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+        <mxGraphModel dx="336" dy="1060" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -50,7 +50,7 @@
                 <mxCell id="27" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontColor=none;" parent="1" source="18" target="26" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="18" value="解复用线程" style="rounded=0;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="1" vertex="1">
+                <mxCell id="18" value="解复用线程(read_thread)" style="rounded=0;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="1" vertex="1">
                     <mxGeometry x="85" y="380" width="120" height="30" as="geometry"/>
                 </mxCell>
                 <mxCell id="21" value="&lt;div style=&quot;font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;font color=&quot;#9cdcfe&quot;&gt;TODO&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
@@ -68,57 +68,87 @@
                 <mxCell id="28" value="&lt;div style=&quot;font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;div style=&quot;&quot;&gt;&lt;span style=&quot;color: rgb(156, 220, 254);&quot;&gt;st_index&lt;/span&gt;&lt;font style=&quot;&quot; color=&quot;#cccccc&quot;&gt;[&lt;/font&gt;&lt;font style=&quot;&quot; color=&quot;#4fc1ff&quot;&gt;AVMEDIA_TYPE_XXX&lt;/font&gt;&lt;font style=&quot;&quot; color=&quot;#cccccc&quot;&gt;] &lt;/font&gt;&lt;span style=&quot;color: rgb(212, 212, 212);&quot;&gt;=&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;span style=&quot;color: rgb(204, 204, 204);&quot;&gt;            &lt;span style=&quot;color: #dcdcaa;&quot;&gt;av_find_best_stream&lt;/span&gt;(&lt;/span&gt;&lt;font style=&quot;&quot; color=&quot;#9cdcfe&quot;&gt;...&lt;/font&gt;&lt;span style=&quot;color: rgb(204, 204, 204); font-size: 10.8px;&quot;&gt;)实现解复用，得到的stream索引用数组维护&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;labelBackgroundColor=none;" parent="1" vertex="1">
                     <mxGeometry x="42.5" y="540" width="205" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="45" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="33" target="40">
+                <mxCell id="45" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;" parent="1" source="33" target="40" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="48" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;div style=&quot;font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: #9cdcfe;&quot;&gt;st_index&lt;/span&gt;[&lt;span style=&quot;color: #4fc1ff;&quot;&gt;AVMEDIA_TYPE_VIDEO&lt;/span&gt;] &lt;span style=&quot;color: #d4d4d4;&quot;&gt;&amp;gt;=&lt;/span&gt; &lt;span style=&quot;color: #b5cea8;&quot;&gt;0&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="45">
+                <mxCell id="48" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;div style=&quot;font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: #9cdcfe;&quot;&gt;st_index&lt;/span&gt;[&lt;span style=&quot;color: #4fc1ff;&quot;&gt;AVMEDIA_TYPE_VIDEO&lt;/span&gt;] &lt;span style=&quot;color: #d4d4d4;&quot;&gt;&amp;gt;=&lt;/span&gt; &lt;span style=&quot;color: #b5cea8;&quot;&gt;0&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="45" vertex="1" connectable="0">
                     <mxGeometry x="0.4" y="1" relative="1" as="geometry">
-                        <mxPoint as="offset"/>
+                        <mxPoint x="-1" y="15" as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="46" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;dashed=1;" edge="1" parent="1" source="33" target="41">
+                <mxCell id="46" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;dashed=1;" parent="1" source="33" target="41" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
-                            <mxPoint x="145" y="700"/>
-                            <mxPoint x="390" y="700"/>
+                            <mxPoint x="145" y="750"/>
+                            <mxPoint x="390" y="750"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="49" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: #9cdcfe;&quot;&gt;st_index&lt;/span&gt;[&lt;span style=&quot;color: #4fc1ff;&quot;&gt;AVMEDIA_TYPE_AUDIO&lt;/span&gt;] &lt;span style=&quot;color: #d4d4d4;&quot;&gt;&amp;gt;=&lt;/span&gt; &lt;span style=&quot;color: #b5cea8;&quot;&gt;0&lt;/span&gt;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="46">
+                <mxCell id="49" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: #9cdcfe;&quot;&gt;st_index&lt;/span&gt;[&lt;span style=&quot;color: #4fc1ff;&quot;&gt;AVMEDIA_TYPE_AUDIO&lt;/span&gt;] &lt;span style=&quot;color: #d4d4d4;&quot;&gt;&amp;gt;=&lt;/span&gt; &lt;span style=&quot;color: #b5cea8;&quot;&gt;0&lt;/span&gt;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="46" vertex="1" connectable="0">
                     <mxGeometry x="0.8542" relative="1" as="geometry">
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="47" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;dashed=1;" edge="1" parent="1" source="33" target="42">
+                <mxCell id="47" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;dashed=1;" parent="1" source="33" target="42" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="391.37931034482756" y="710" as="targetPoint"/>
                         <Array as="points">
-                            <mxPoint x="145" y="700"/>
-                            <mxPoint x="640" y="700"/>
+                            <mxPoint x="145" y="750"/>
+                            <mxPoint x="640" y="750"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="51" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: #9cdcfe;&quot;&gt;st_index&lt;/span&gt;[&lt;span style=&quot;color: #4fc1ff;&quot;&gt;AVMEDIA_TYPE_SUBTITLE&lt;/span&gt;] &lt;span style=&quot;color: #d4d4d4;&quot;&gt;&amp;gt;=&lt;/span&gt; &lt;span style=&quot;color: #b5cea8;&quot;&gt;0&lt;/span&gt;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="47">
+                <mxCell id="51" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: #9cdcfe;&quot;&gt;st_index&lt;/span&gt;[&lt;span style=&quot;color: #4fc1ff;&quot;&gt;AVMEDIA_TYPE_SUBTITLE&lt;/span&gt;] &lt;span style=&quot;color: #d4d4d4;&quot;&gt;&amp;gt;=&lt;/span&gt; &lt;span style=&quot;color: #b5cea8;&quot;&gt;0&lt;/span&gt;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="47" vertex="1" connectable="0">
                     <mxGeometry x="0.9171" y="3" relative="1" as="geometry">
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="52" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: #dcdcaa;&quot;&gt;stream_component_open(...)&lt;/span&gt;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="47">
+                <mxCell id="52" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: #dcdcaa;&quot;&gt;stream_component_open(...)&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;background-color: rgb(31, 31, 31); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;div style=&quot;color: rgb(204, 204, 204); font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: #dcdcaa;&quot;&gt;avcodec_alloc_context3(...)标准流程&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;color: rgb(204, 204, 204); font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;div style=&quot;font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: #dcdcaa;&quot;&gt;decoder_init(...)&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: #dcdcaa;&quot;&gt;decoder_start(...)调用SDL_CreateThread创建线程&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="47" vertex="1" connectable="0">
                     <mxGeometry x="-0.9637" y="-1" relative="1" as="geometry">
-                        <mxPoint as="offset"/>
+                        <mxPoint y="28" as="offset"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="33" value="创建解码线程" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#008a00;fontColor=#ffffff;strokeColor=#005700;" parent="1" vertex="1">
                     <mxGeometry x="80" y="640" width="130" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="40" value="Video解码线程" style="rounded=0;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="1" vertex="1">
-                    <mxGeometry x="85" y="750" width="120" height="30" as="geometry"/>
+                <mxCell id="54" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="40" target="53">
+                    <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="41" value="Audio解码线程" style="rounded=0;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="1" vertex="1">
-                    <mxGeometry x="330" y="750" width="120" height="30" as="geometry"/>
+                <mxCell id="40" value="Video解码线程(video_thread)" style="rounded=0;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="1" vertex="1">
+                    <mxGeometry x="85" y="810" width="120" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="42" value="Subtitle解码线程" style="rounded=0;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="1" vertex="1">
-                    <mxGeometry x="580" y="750" width="120" height="30" as="geometry"/>
+                <mxCell id="41" value="Audio解码线程(audio_thread)" style="rounded=0;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="1" vertex="1">
+                    <mxGeometry x="330" y="810" width="120" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="42" value="Subtitle解码线程(subtitle_thread)" style="rounded=0;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#6a00ff;fontColor=#ffffff;strokeColor=#3700CC;" parent="1" vertex="1">
+                    <mxGeometry x="580" y="810" width="120" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="56" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="53" target="55">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="53" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: #9cdcfe;&quot;&gt;ret&lt;/span&gt; &lt;span style=&quot;color: #d4d4d4;&quot;&gt;=&lt;/span&gt; &lt;span style=&quot;color: #dcdcaa;&quot;&gt;get_video_frame&lt;/span&gt;(&lt;span style=&quot;color: #9cdcfe;&quot;&gt;is&lt;/span&gt;, &lt;span style=&quot;color: #9cdcfe;&quot;&gt;frame&lt;/span&gt;)获取一帧（内部调用&lt;span style=&quot;color: rgb(220, 220, 170); font-size: 9.6px;&quot;&gt;decoder_decode_frame&lt;/span&gt;&lt;span style=&quot;font-size: 10.8px;&quot;&gt;，同时还有别的操作，实现下文详述）&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="47.5" y="860" width="195" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="58" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="55" target="57">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="55" value="帧参数处理（计算duration，秒pts，序列号等）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#008a00;fontColor=#ffffff;strokeColor=#005700;" vertex="1" parent="1">
+                    <mxGeometry x="85" y="960" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="61" style="edgeStyle=none;html=1;" edge="1" parent="1" source="57">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="145" y="850" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="145" y="1070"/>
+                            <mxPoint x="210" y="1070"/>
+                            <mxPoint x="260" y="1070"/>
+                            <mxPoint x="260" y="960"/>
+                            <mxPoint x="260" y="850"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="57" value="&lt;div style=&quot;background-color: rgb(31, 31, 31); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;div style=&quot;font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: rgb(156, 220, 254);&quot;&gt;ret&lt;/span&gt; &lt;span style=&quot;color: rgb(212, 212, 212);&quot;&gt;=&lt;/span&gt; &lt;span style=&quot;color: rgb(220, 220, 170);&quot;&gt;queue_picture&lt;/span&gt;&lt;font color=&quot;#cccccc&quot;&gt;(&lt;/font&gt;&lt;font color=&quot;#9cdcfe&quot;&gt;...&lt;/font&gt;&lt;font color=&quot;#cccccc&quot;&gt;)&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="47.5" y="1030" width="195" height="20" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
