@@ -116,6 +116,7 @@ typedef struct MyAVPacketList {
 
 typedef struct PacketQueue {
     /* ffmpeg封装的队列数据结构，里面的数据对象是MyAVPacketList */
+    /* 支持操作alloc2, write, read, freep */
     AVFifo *pkt_list;
     /* 队列中当前的packet数 */
     int nb_packets;
