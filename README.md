@@ -22,6 +22,45 @@
 **综上所述，ffplay整体的架构图如下所示：**
 ![ffplay_arch](https://github.com/leo4048111/ffplay-explained/blob/3c16fac949b361b1a6fd24331ea47bbdb3866111/ffplay_arch.png)
 
+## 重要结构体分析
 
+### PacketQueue
 
+`PacketQueue`结构体的声明如下所示：
 
+```cpp
+typedef struct PacketQueue
+{
+    /* ffmpeg封装的队列数据结构，里面的数据对象是MyAVPacketList */
+    /* 支持操作alloc2, write, read, freep */
+    AVFifo *pkt_list;
+    /* 队列中当前的packet数 */
+    int nb_packets;
+    /* 队列所有节点占用的总内存大小 */
+    int size;
+    /* 队列中所有节点的合计时长 */
+    int64_t duration;
+    /* 终止队列操作信号，用于安全快速退出播放 */
+    int abort_request;
+    /* 序列号，和MyAVPacketList中的序列号作用相同，但改变的时序略有不同 */
+    int serial;
+    /* 互斥锁，用于保护队列操作 */
+    SDL_mutex *mutex;
+    /* 条件变量，用于读写进程的相互通知 */
+    SDL_cond *cond;
+} PacketQueue;
+```
+
+其中`AVFifo *pkt_list`中存储的数据类型为`MyAVPacketList`，该结构体声明如下：
+
+```cpp
+typedef struct MyAVPacketList
+{
+    /* 待解码数据 */
+    AVPacket *pkt;
+    /* pkt序列号 */
+    int serial;
+} MyAVPacketList;
+```
+
+该数据结构的引入主要是为了设计⼀个多线程安全的队列，保存AVPacket，同时统计队列内已缓存的数据⼤⼩。（这个统计数据会⽤来后续设置要缓存的数据量）。同时，数据结构中引⼊了serial的概念，区别前后数据包是否连续，主要应⽤于seek操作。最后设计了两类特殊的packet——flush_pkt和nullpkt（类似⽤于多线程编程的事件模型——往队列中放⼊ flush事件、放⼊null事件），其在⾳频输出、视频输出、播放控制等模块时也会继续使用到其来队列控制
