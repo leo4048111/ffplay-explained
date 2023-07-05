@@ -755,7 +755,7 @@ if (is->seek_req)
 
 # 视音频同步算法原理与代码实现分析
 
-**这里所涵盖的函数与算法分析主要围绕音视频同步算法中所用到的相关变量设置与函数调用流程开展，先介绍例如`audclk`,`videoclk`,`audio_clock`等涉及时间计算的变量的设置时机与计算方式，最后分析ffplay所使用的视音频同步算法原理及其实现。**
+**这里所涵盖的函数与算法分析主要围绕音视频同步算法中所用到的相关变量设置与函数调用流程开展，先介绍例如`audclk`,`vidclk`,`audio_clock`等涉及时间计算的变量的设置时机与计算方式，最后分析ffplay所使用的视音频同步算法原理及其实现。**
 
 ## audio_clock变量的设置时机与计算方法
 
@@ -775,4 +775,8 @@ static int audio_decode_frame(VideoState *is)
 ```
 
 这里`audio_decode_frame`这个函数在每次`sdl_audio_callback`时都会被调用，用来从`FrameQueue`中取出一帧解码后的音频数据，进行一定的加工（比如说重采样和采样率调整、通道数调整等，一般不会被执行），最后将其中的数据返回给`sdl_audio_callback`。在最后，可以看到`audio_clock`的计算是当前取出这一帧的`pts`加上了`(double)af->frame->nb_samples / af->frame->sample_rate`。这里的这个`(double)af->frame->nb_samples / af->frame->sample_rate`很明显就是帧的`duration`时长，因此我们可以得出结论，`is->audio_clock`应该是等于当前最新被`audio_decode_frame`从`FrameQueue`取出的帧的`pts` + `duration`，也就是这帧被播放完时刻的时间戳。至于这里设置完`audio_clock`和`is->audclk`的音频时钟计算有什么关系，我们下文继续阐述。
+
+## audclk变量的设置时机与计算方法
+
+`audclk`变量的设置时机紧接着上面所述的`audio_clock`变量，在`sdl_audio_callback`调用`audio_decode_frame`并且返回后，`sdl_audio_callback`会使用`memcpy`将`Frame`中的数据拷进`SDL`，如果不够拷那就再取下一个`frame`放到`is->audio_buff`里面，直到`len == 0`为止，同时更新`is->audio_buf_index`和`is->audio_write_buf_size`到正确的位置
 
