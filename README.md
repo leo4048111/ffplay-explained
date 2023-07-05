@@ -797,5 +797,9 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
 这里可以看到，`set_clock_at`函数调用时传入的`pts`参数是`is->audio_clock - (double)(2 * is->audio_hw_buf_size + is->audio_write_buf_size) / is->audio_tgt.bytes_per_sec`。参考https://blog.csdn.net/u012117034/article/details/122873602?spm=1001.2014.3001.5506的分析内容，后面的这个`2 * is->audio_hw_buf_size + is->audio_write_buf_size`这个数值的含义其实就是当前还没有开始播的被缓存数据字节数。这个算式由两部分构成，首先是前面的`2 * is->audio_hw_buf_size`，这个是在`SDL`内部的未播完数据长度，结构如下所示：
 ![image](https://github.com/leo4048111/ffplay-explained/assets/74029782/0771e0ad-4fb6-468c-9aa6-194bbf9df1ca)
 
+这里可见一段红色的，就是SDL里面正在播的数据，长度为`is->audio_hw_buf_size`，后面那个`len`就是这次`sdl_audio_callback`函数调用中我们手动拷进去的数据长度。这里注意，SDL调用`sdl_audio_callback`拿数据的时候，传进来的`len`和`audio_hw_buf_size`是恒相等的。所以，在这里的计算中，`2 * is->audio_hw_buf_size`其实是`len + is->audio_hw_buf_size`。只不过`len`变量在上面的`while`循环取数据中已经被减成0了，所以这里直接就`2 * is->audio_hw_buf_size`进行计算。然后，算式的第二部分是`is->audio_write_buf_size`，这是`is->audio_buf`中还没有被送给`SDL`的剩余帧数据长度。拿这三部分的和除以`is->audio_tgt.bytes_per_sec`，算出的就是播完这三部分所用的时间。最后，用之前算出来的播完这一帧的时间戳`is->audio_clock`，减去播完这三段的总时间，得到的就是当前音频时钟`audclk`的准确`pts`，大概的图示如下：
 
+![ffplay_audclk](https://github.com/leo4048111/ffplay-explained/blob/0c0290e74218de37ee1bd57631283fa1544dd48f/ffplay_audclk.png)
+
+在确定了时钟pts后，通过`set_clock_at`设置`is->audclk`的`pts`，然后将`is->extclk`外部时钟同步到`is->audclk`上，以供在音视频同步计算中使用。
 
