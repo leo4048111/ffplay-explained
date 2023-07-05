@@ -22,6 +22,154 @@
 **综上所述，ffplay整体的架构图如下所示：**
 ![ffplay_arch](https://github.com/leo4048111/ffplay-explained/blob/3c16fac949b361b1a6fd24331ea47bbdb3866111/ffplay_arch.png)
 
+## 重要结构体分析
 
+### PacketQueue
 
+`PacketQueue`结构体的声明如下所示：
+
+```cpp
+typedef struct PacketQueue
+{
+    /* ffmpeg封装的队列数据结构，里面的数据对象是MyAVPacketList */
+    /* 支持操作alloc2, write, read, freep */
+    AVFifo *pkt_list;
+    /* 队列中当前的packet数 */
+    int nb_packets;
+    /* 队列所有节点占用的总内存大小 */
+    int size;
+    /* 队列中所有节点的合计时长 */
+    int64_t duration;
+    /* 终止队列操作信号，用于安全快速退出播放 */
+    int abort_request;
+    /* 序列号，和MyAVPacketList中的序列号作用相同，但改变的时序略有不同 */
+    int serial;
+    /* 互斥锁，用于保护队列操作 */
+    SDL_mutex *mutex;
+    /* 条件变量，用于读写进程的相互通知 */
+    SDL_cond *cond;
+} PacketQueue;
+```
+
+其中`AVFifo *pkt_list`中存储的数据类型为`MyAVPacketList`，该结构体声明如下：
+
+```cpp
+typedef struct MyAVPacketList
+{
+    /* 待解码数据 */
+    AVPacket *pkt;
+    /* pkt序列号 */
+    int serial;
+} MyAVPacketList;
+```
+
+该数据结构的引入主要是为了设计⼀个多线程安全的队列，保存AVPacket，同时统计队列内已缓存的数据⼤⼩。（这个统计数据会⽤来后续设置要缓存的数据量）。同时，数据结构中引⼊了serial的概念，区别前后数据包是否连续，主要应⽤于seek操作。
+对于该结构体的相关操作方法罗列如下：
+
++ `packet_queue_init`：用于初始化一个`PacketQueue`结构，流程上先给`pkt_list`分配内存，再创建`mutex`和`cond`变量，最后将`abort_request`设为1，这样在`stream_open`中初始化三个队列后，启动的`read_thread`里面`stream_has_enough_packets`会返回`true`，使得`read_thread`不会立即开始从输入流/文件中读取`AVPacket`，而是等待手动调用`start`启动队列后再读数据
+
+```cpp
+static int packet_queue_init(PacketQueue *q)
+{
+    memset(q, 0, sizeof(PacketQueue));
+    q->pkt_list = av_fifo_alloc2(1, sizeof(MyAVPacketList), AV_FIFO_FLAG_AUTO_GROW);
+    if (!q->pkt_list)
+        return AVERROR(ENOMEM);
+    q->mutex = SDL_CreateMutex();
+    if (!q->mutex)
+    {
+        av_log(NULL, AV_LOG_FATAL, "SDL_CreateMutex(): %s\n", SDL_GetError());
+        return AVERROR(ENOMEM);
+    }
+    q->cond = SDL_CreateCond();
+    if (!q->cond)
+    {
+        av_log(NULL, AV_LOG_FATAL, "SDL_CreateCond(): %s\n", SDL_GetError());
+        return AVERROR(ENOMEM);
+    }
+    q->abort_request = 1;
+    return 0;
+}
+```
+
++ `packet_queue_destroy`：用于销毁一个`PacketQueue`结构，流程上先调用`packet_queue_flush`将管理的所有队列节点清除，随后释放内存然后销毁`init`里面创建的相关变量
+
+```cpp
+static void packet_queue_destroy(PacketQueue *q)
+{
+    packet_queue_flush(q);
+    av_fifo_freep2(&q->pkt_list);
+    SDL_DestroyMutex(q->mutex);
+    SDL_DestroyCond(q->cond);
+}
+```
+
++ `packet_queue_start`：用于启动一个`PacketQueue`，做的工作就是把`abort_request`置0，让`read_thread`开始读数据，然后自增队列的序列号
+
+```cpp
+static void packet_queue_start(PacketQueue *q)
+{
+    SDL_LockMutex(q->mutex);
+    q->abort_request = 0;
+    q->serial++;
+    SDL_UnlockMutex(q->mutex);
+}
+```
+
++ `packet_queue_abort`：用于终止一个`PacketQueue`，做的工作就是把`abort_request`置1，然后释放一个`cond`信号。这里释放`cond`的意义是，在`packet_queue_get`阻塞调用时，该函数可能会因为队列中没有数据而阻塞等待在`SDL_CondWait(q->cond, q->mutex)`这一句上。这时候如果`abort`了，读线程也不会再读入新数据，自然不会再发送新的`cond`信号来唤醒`get`的线程。所以，为了避免这种情况下线程永远阻塞，因此在`abort`时候发送一次`cond`信号，使得线程能够再运行到循环头，进入`if (q->abort_request)`的逻辑。
+
+```cpp
+static void packet_queue_abort(PacketQueue *q)
+{
+    SDL_LockMutex(q->mutex);
+    q->abort_request = 1;
+    SDL_CondSignal(q->cond);
+    SDL_UnlockMutex(q->mutex);
+}
+```
+
++ `packet_queue_get`：该函数用于从一个`PacketQueue`中取出一个`pkt`。该函数的运行可能分为三种情况，对应三个返回值。首先是`av_fifo_read(q->pkt_list, &pkt1, 1) >= 0`即正确读出了一个`pkt`的情况，这时候更新相关的队列参数（这里注意`q->size`减去的是`pkt1.pkt->size + sizeof(pkt1)`，可知`q->size`算的大小是同时包括包数据和储存包的节点数据结构大小的），然后返回读出的包即可，此时返回值为1。其次，如果队列为空，并且是非阻塞运行（`packet_queue_get`调用参数`block`设为0），那么直接返回0。最后，如果队列为空且为阻塞运行(`block`为1)，则用`SDL_CondWait(q->cond, q->mutex);`入睡，等待别的线程往队列里放数据，或者`abort`时再醒过来重新执行循环
+
+```cpp
+static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block, int *serial)
+{
+    MyAVPacketList pkt1;
+    int ret;
+
+    SDL_LockMutex(q->mutex);
+
+    for (;;)
+    {
+        if (q->abort_request)
+        {
+            ret = -1;
+            break;
+        }
+
+        if (av_fifo_read(q->pkt_list, &pkt1, 1) >= 0)
+        {
+            q->nb_packets--;
+            q->size -= pkt1.pkt->size + sizeof(pkt1);
+            q->duration -= pkt1.pkt->duration;
+            av_packet_move_ref(pkt, pkt1.pkt);
+            if (serial)
+                *serial = pkt1.serial;
+            av_packet_free(&pkt1.pkt);
+            ret = 1;
+            break;
+        }
+        else if (!block)
+        {
+            ret = 0;
+            break;
+        }
+        else
+        {
+            SDL_CondWait(q->cond, q->mutex);
+        }
+    }
+    SDL_UnlockMutex(q->mutex);
+    return ret;
+}
+```
 
