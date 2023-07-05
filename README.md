@@ -697,4 +697,56 @@ static void video_refresh(void *opaque, double *remaining_time)
 
 这里可以看到，`step_to_next_frame`中第一步是如果视频正在暂停，就让视频继续播放。随后，将`is->step`设置为1，表示现在正在进行逐帧前进操作。随后，在下一次进入`video_refresh`的时候，会走到上面的这个代码里面。这时候视频肯定是正在播放的状态，所以里面调用了`stream_toggle_pause`就把视频暂停了，这时候紧接着代码执行当前读出的这一帧的渲染逻辑，这一帧渲染完后视频就是一个暂停的状态。然后如果再按一下`s`，视频又往后渲染一帧之后暂停，以此类推，直到用户按`space`或者`p`，调用`stream_toggle_pause`的时候清除`is->step`，才能让视频继续播放。所以可以看出，逐帧前进这个功能的实现其实就是通过按一下按键，播放器就播放一帧后暂停，再按一下就再播放一帧后暂停这样的逻辑实现的，这是`is->step`变量设置的意义所在。
 
-## Seek（跳转播放）
+## Seek(跳转播放)
+
+Seek操作的主要流程大致为下图所示：
+
+![ffplay_seek](https://github.com/leo4048111/ffplay-explained/blob/65cd7bc99f705d41dc95a827ff4c164dd135ff55/ffplay_seek.png)
+
+可见其中主要有三大步骤，第一是在`event_loop`中根据用户按的按钮不同，分别设置跳转的时长（目前看下来ffplay只支持快进快退10s或者60s。然后，根据文件类型不同，选择不同的`seek`方式。如果是按字节`seek`（`seek_by_bytes`），则通过`incr`乘上字节率（比特率 / 8）计算出需要seek偏移（这里单位字节）。否则，直接在计算中用`incr`和当前`get_master_clock`返回的主时钟相加即可，这时候算出来的`pos`和`rel`单位是秒。
+
+上一步执行完毕后，第二步两个分支都会调用`stream_seek`将计算完毕的`pos`和`rel`设置到`is`的`seek`参数中（其中上面算出以秒为单位的数据在传进来的时候转成了微秒）。`stream_seek`函数只进行参数设置，然后把`seek_req`置1，表示当前请求`seek`操作，本身它并不做实际的seek工作。
+
+第三步之前的上述工作由主线程完成，最后在`is->seek_req`被设置后，解复用线程`read_thread`会进入到下面的代码逻辑中：
+
+```cpp
+if (is->seek_req)
+        {
+            int64_t seek_target = is->seek_pos;
+            int64_t seek_min = is->seek_rel > 0 ? seek_target - is->seek_rel + 2 : INT64_MIN;
+            int64_t seek_max = is->seek_rel < 0 ? seek_target - is->seek_rel - 2 : INT64_MAX;
+            // FIXME the +-2 is due to rounding being not done in the correct direction in generation
+            //      of the seek_pos/seek_rel variables
+
+            ret = avformat_seek_file(is->ic, -1, seek_min, seek_target, seek_max, is->seek_flags);
+            if (ret < 0)
+            {
+                av_log(NULL, AV_LOG_ERROR,
+                       "%s: error while seeking\n", is->ic->url);
+            }
+            else
+            {
+                if (is->audio_stream >= 0)
+                    packet_queue_flush(&is->audioq);
+                if (is->subtitle_stream >= 0)
+                    packet_queue_flush(&is->subtitleq);
+                if (is->video_stream >= 0)
+                    packet_queue_flush(&is->videoq);
+                if (is->seek_flags & AVSEEK_FLAG_BYTE)
+                {
+                    set_clock(&is->extclk, NAN, 0);
+                }
+                else
+                {
+                    set_clock(&is->extclk, seek_target / (double)AV_TIME_BASE, 0);
+                }
+            }
+            is->seek_req = 0;
+            is->queue_attachments_req = 1;
+            is->eof = 0;
+            if (is->paused)
+                step_to_next_frame(is);
+        }
+```
+
+这里是真正实现seek操作的位置，原理是调用了`avformat_seek_file`这个函数。调用完之后，文件或者流的读取位置就被正确更新了，之后的`av_read_frame`都会从新的位置开始取出`AVPacket`。随后，ffplay会通过`packet_queue_flush`把`PacketQueue`缓存清空，同时重设外部时钟到seek到的新位置，然后清除`seek_req`的标志。最后，如果当前视频是暂停的状态，则进行一次step操作，目的是为了让播放器上显示seek到的最新位置的画面，最终实现了整体的seek操作逻辑。
