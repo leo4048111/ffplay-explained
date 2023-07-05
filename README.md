@@ -19,6 +19,8 @@ ffplay.c源码分析与理解
    * **[Pause(暂停播放)](#pause暂停播放)**
    * **[Step(逐帧前进)](#step逐帧前进)**
    * **[Seek(跳转播放)](#seek跳转播放)**
+* **[视音频同步算法原理与代码实现分析](#视音频同步算法原理与代码实现分析)**
+   * **[audio_clock变量的设置时机与计算方法](#audio_clock变量的设置时机与计算方法)**
 
 # 前言
 
@@ -750,3 +752,27 @@ if (is->seek_req)
 ```
 
 这里是真正实现seek操作的位置，原理是调用了`avformat_seek_file`这个函数。调用完之后，文件或者流的读取位置就被正确更新了，之后的`av_read_frame`都会从新的位置开始取出`AVPacket`。随后，ffplay会通过`packet_queue_flush`把`PacketQueue`缓存清空，同时重设外部时钟到seek到的新位置，然后清除`seek_req`的标志。最后，如果当前视频是暂停的状态，则进行一次step操作，目的是为了让播放器上显示seek到的最新位置的画面，最终实现了整体的seek操作逻辑。
+
+# 视音频同步算法原理与代码实现分析
+
+**这里所涵盖的函数与算法分析主要围绕音视频同步算法中所用到的相关变量设置与函数调用流程开展，先介绍例如`audclk`,`videoclk`,`audio_clock`等涉及时间计算的变量的设置时机与计算方式，最后分析ffplay所使用的视音频同步算法原理及其实现。**
+
+## audio_clock变量的设置时机与计算方法
+
+在`VideoState`里面有两个和音频时钟计算有关的变量。一个是`audclk`，它是一个`Clock`数据结构对象。另一个是一个`double`型数据`audio_clock`。这里我先分析一下`audio_clock`变量的含义、功能、设置时机与计算方式。这个变量的设置是在`audio_decode_frame`中进行的，代码如下：
+
+```cpp
+static int audio_decode_frame(VideoState *is)
+{
+...
+/* update the audio clock with the pts */
+    if (!isnan(af->pts))
+        is->audio_clock = af->pts + (double)af->frame->nb_samples / af->frame->sample_rate;
+    else
+        is->audio_clock = NAN;
+...
+}
+```
+
+这里`audio_decode_frame`这个函数在每次`sdl_audio_callback`时都会被调用，用来从`FrameQueue`中取出一帧解码后的音频数据，进行一定的加工（比如说重采样和采样率调整、通道数调整等，一般不会被执行），最后将其中的数据返回给`sdl_audio_callback`。在最后，可以看到`audio_clock`的计算是当前取出这一帧的`pts`加上了`(double)af->frame->nb_samples / af->frame->sample_rate`。这里的这个`(double)af->frame->nb_samples / af->frame->sample_rate`很明显就是帧的`duration`时长，因此我们可以得出结论，`is->audio_clock`应该是等于当前最新被`audio_decode_frame`从`FrameQueue`取出的帧的`pts` + `duration`，也就是这帧被播放完时刻的时间戳。至于这里设置完`audio_clock`和`is->audclk`的音频时钟计算有什么关系，我们下文继续阐述。
+
