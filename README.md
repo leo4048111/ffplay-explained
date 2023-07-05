@@ -610,4 +610,63 @@ ffplay的start过程基本上已经在上文中的架构图中能够比较清晰
 
 ## Pause(暂停播放)
 
-TODO
+ffplay的暂停播放逻辑入口在`SDL`事件处理的`event_loop`中，在用户按下`p`或者`space`的时候触发，进入函数`toggle_pause`，大致的函数调用流程和数据通路如下：
+
+![ffplay_pause](https://github.com/leo4048111/ffplay-explained/blob/8ed9b7185c18c079e465142c98d802102307cc8f/ffplay_pause.png)
+
+这里可以看到，按下按键后，首先进入到`toggle_pause`中，里面主要做2个工作。第一个是调用`stream_toggle_pause`来更新`is->paused`、外部时钟和三个时钟的`paused`状态。第二个是将`is->step`置为了0（这个变量用于实现播放器的按键`s`功能，即按一下往后走一帧，具体原理见下文对于`Step`功能的原理分析）。代码中，用到`is->paused`和三个时钟的`paused`变量的位置主要有4处。第一个地方是`refresh_loop_wait_event`对于`video_refresh`的调用位置，源码如下：
+
+```cpp
+static void refresh_loop_wait_event(VideoState *is, SDL_Event *event)
+{
+	...	
+        if (is->show_mode != SHOW_MODE_NONE && (!is->paused || is->force_refresh))
+            video_refresh(is, &remaining_time);
+	...
+}
+
+static void video_refresh(void *opaque, double *remaining_time)
+{
+    ...
+        if (is->paused)
+            goto display;
+    ...
+}
+```
+
+这里可以看到，如果`is->paused`为1即暂停时，video_refresh只可能在`is->force_refresh`被设置的时候才会被调用。这个`is->force_refresh`在源码中可以看出，会在窗口大小更改的时候被设置。所以`video_refresh`中`is->paused`被设置时，直接可以跳过后面的音视频同步代码，直接进入`display`来渲染画面。
+
+第二个用到`audio_decode_frame`里面，源代码如下：
+
+```cpp
+static int audio_decode_frame(VideoState *is)
+{
+	...
+    if (is->paused)
+        return -1;
+    ...   
+}
+```
+
+这里的目的是为了在暂停时不从`is->sampq`中取数据，实现暂停时的静音效果。因为从ffplay的源码来看，解码线程是没有暂停这个操作的，就算`is->paused`被设置了，播放器的播放暂停，但是解码工作还是会继续，直到把缓存队列塞满或者无码可解。所以，这里让`audio_decode_frame`直接返回-1，不去从`FrameQueue`中读数据，这样外边调用它的`sdl_audio_callback`看到返回值`audio_size < 0`，就会把`is->audio_buf`设为`NULL`，然后后面送数据的时候就会走到`memset(stream, 0, len1)`的逻辑，从而往`SDL`里面送空数据，实现了暂停时的音频也一样暂停。
+
+第三个用到`is->paused`的地方是解复用线程`read_thread`，这个里面的代码逻辑如下：
+
+```cpp
+static int read_thread(void *arg) {
+...
+        if (is->paused != is->last_paused)
+        {
+            is->last_paused = is->paused;
+            if (is->paused)
+                is->read_pause_return = av_read_pause(ic);
+            else
+                av_read_play(ic);
+        }
+...
+}
+```
+
+可以看到，这里做了一个判断，如果暂停的状态发生了改变（比如原来在播放现在暂停，或者原来暂停现在播放），就分别调用`av_read_pause`和`av_read_play`来暂停或者继续从流/文件中读取`AVPacket`。这三处代码块通过访问`is->paused`变量的状态，执行不同的代码逻辑，从而实现了播放器的暂停功能。
+
+最后，可以发现在暂停的时候，三个`Clock`的`paused`变量也被设置为了`is->paused`的状态。这里设置的`paused`会在`get_clock`函数调用中被使用。这里`get_clock`的计算原理暂时不进行阐述，留到视音频同步算法解析部分一并分析研究。
