@@ -251,16 +251,19 @@ static void packet_queue_flush(PacketQueue *q)
 ```cpp
 typedef struct FrameQueue
 {
-    Frame queue[FRAME_QUEUE_SIZE];
-    int rindex;
-    int windex;
-    int size;
-    int max_size;
-    int keep_last;
-    int rindex_shown;
-    SDL_mutex *mutex;
-    SDL_cond *cond;
-    PacketQueue *pktq;
+    Frame queue[FRAME_QUEUE_SIZE]; /* 用于存放帧数据的队列 */
+    int rindex;                    /* 读索引 */
+    int windex;                    /* 写索引 */
+    int size;                      /* 队列中的帧数 */
+    int max_size;                  /* 队列最大缓存的帧数 */
+    int keep_last;                 /* 播放后是否在队列中保留上一帧不销毁 */
+    int rindex_shown;              /* keep_last的实现，读的时候实际上读的是rindex + rindex_shown，分析见下 */
+    SDL_mutex *mutex;              /* 互斥锁，用于保护队列操作 */
+    SDL_cond *cond;                /* 条件变量，用于解码和播放线程的相互通知 */
+    PacketQueue *pktq;             /* 指向对应的PacketQueue，FrameQueue里面的数据就是这个队列解码出来的 */
 } FrameQueue;
 ```
 
+可见这里`FrameQueue`中的`Frame`存储和`PacketQueue`不同，没有使用`AVFifo *`，而是通过一个循环数组`queue`来模拟队列，`rindex`指向当前读取的位置（即队头），`windex`指向当前写入的位置（即队尾），两者之间就是队列的数据范围。其中，`Frame`的数据都是从`pktq`指向的`PacketQueue`中解码得到的，`Frame`结构中就是`AVFrame`的数据外加一些其它的不同类型`Frame`参数，这样的设计应该是为了使得`Frame`结构能够同时存储视音频和字幕等不同类型的帧，这里不再赘述。下面结合对于`FrameQueue`结构体的操作，简要阐述这里面变量的作用：
+
++ 
