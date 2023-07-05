@@ -293,7 +293,7 @@ static int frame_queue_init(FrameQueue *f, PacketQueue *pktq, int max_size, int 
 }
 ```
 
-+ `frame_queue_destory`：该函数用于销毁一个`FrameQueue`(这个名字比较奇怪，怀疑destory是拼错了，已经email提了MR，开发者反馈LGTM Thx，估计就是拼错了，不知道commit能不能合进去)。该函数的核心流程见源代码，做的工作比较简单，就是遍历了`f->max_size`范围下的所有`Frame`，然后解除内部对于`AVFrame`数据缓冲区的引用然后释放。（这里为啥不是从队尾即`windex`开始遍历？不太懂）
++ `frame_queue_destory`：该函数用于销毁一个`FrameQueue`(这个名字比较奇怪，怀疑destory是拼错了，已经email提了MR，开发者反馈LGTM Thx，估计就是拼错了，不知道commit能不能合进去)。该函数的核心流程见源代码，做的工作比较简单，就是遍历了`f->max_size`范围下的所有`Frame`，然后解除内部对于`AVFrame`数据缓冲区的引用然后释放。
 
 ```cpp
 static void frame_queue_destory(FrameQueue *f)
@@ -307,6 +307,112 @@ static void frame_queue_destory(FrameQueue *f)
     }
     SDL_DestroyMutex(f->mutex);
     SDL_DestroyCond(f->cond);
+}
+```
+
++ `frame_queue_signal`：内部就是对于`SDL_CondSignal(f->cond);`的封装，用于线程通信。
+
+```cpp
+static void frame_queue_signal(FrameQueue *f)
+{
+    SDL_LockMutex(f->mutex);
+    SDL_CondSignal(f->cond);
+    SDL_UnlockMutex(f->mutex);
+}
+```
+
++ `frame_queue_peek_writable`：这个函数用于返回一个队列中的可写位置。从`ffplay.c`源码来看，`FrameQueue`的写入操作一般分为三步。首先通过`frame_queue_peek_writable`获取一个可写位置。随后，直接用`=`对于位置中的`Frame`结构进行赋值。最后，再调用`frame_queue_push`来更新`FrameQueue`来更新`windex`写指针的位置。这里的这个函数逻辑其实很简单，就是返回了`windex`指向的可写位置，其它特殊情况的处理见源码
+
+```cpp
+static Frame *frame_queue_peek_writable(FrameQueue *f)
+{
+    /* wait until we have space to put a new frame */
+    SDL_LockMutex(f->mutex);
+    while (f->size >= f->max_size &&
+           !f->pktq->abort_request)
+    {
+        SDL_CondWait(f->cond, f->mutex);
+    }
+    SDL_UnlockMutex(f->mutex);
+
+    if (f->pktq->abort_request)
+        return NULL;
+
+    return &f->queue[f->windex];
+
+```
+
++ `frame_queue_push`：上面提到了，这个函数的作用就是更新`windex`和`size`。并且，由于`FrameQueue`的队列实现是一个循环数组，因此如果`f->windex`加到了`f->max_size`，那么就回到0索引，起到一个循环的效果。
+
+```cpp
+static void frame_queue_push(FrameQueue *f)
+{
+    if (++f->windex == f->max_size)
+        f->windex = 0;
+    SDL_LockMutex(f->mutex);
+    f->size++;
+    SDL_CondSignal(f->cond);
+    SDL_UnlockMutex(f->mutex);
+}
+```
+
++ `frame_queue_peek,frame_queue_peek_next,frame_queue_peek_last`：这三个`peek`函数返回的是分别是下一帧，下一帧的下一帧，和当前的队首。其中第一个函数可见返回元素的索引使用的是`return &f->queue[(f->rindex + f->rindex_shown) % f->max_size];`，这其实是`keep_last`实现逻辑的一部分，具体原理下面叙述。
+
+```cpp
+static Frame *frame_queue_peek(FrameQueue *f)
+{
+    return &f->queue[(f->rindex + f->rindex_shown) % f->max_size];
+}
+
+static Frame *frame_queue_peek_next(FrameQueue *f)
+{
+    return &f->queue[(f->rindex + f->rindex_shown + 1) % f->max_size];
+}
+
+static Frame *frame_queue_peek_last(FrameQueue *f)
+{
+    return &f->queue[f->rindex];
+}
+```
+
++ `frame_queue_peek_readable`：这个函数的作用是返回队列中的下一帧。这里可以看到返回的时候，使用的索引同样是`(f->rindex + f->rindex_shown) % f->max_size`。容易想象，如果`f->rindex_shown`是`0`，那么返回的就是队首。而如果`f->rindex_shown`是1，那么返回的是排在队首的后面一个元素。这样设计的用意是为了实现`keep_last`，即播放后保留上一次播放的帧。具体逻辑需要结合紧接着的`frame_queue_next`函数逻辑进行叙述。
+
+```cpp
+static Frame *frame_queue_peek_readable(FrameQueue *f)
+{
+    /* wait until we have a readable a new frame */
+    SDL_LockMutex(f->mutex);
+    while (f->size - f->rindex_shown <= 0 &&
+           !f->pktq->abort_request)
+    {
+        SDL_CondWait(f->cond, f->mutex);
+    }
+    SDL_UnlockMutex(f->mutex);
+
+    if (f->pktq->abort_request)
+        return NULL;
+
+    return &f->queue[(f->rindex + f->rindex_shown) % f->max_size];
+}
+```
+
++ `frame_queue_next`：这个函数的作用是推进队首指针`rindex`（即类似队列的pop操作）。这里注意第一句`if (f->keep_last && !f->rindex_shown) {...}`，其中的`keep_last`是在`init`的时候就写死的`1`或者`0`，表示这个队列是否需要保留播放完毕的上一帧。因为从`frame_queue_next`函数中可以看到，每次`rindex`自增前，都会对于之前已经被拿走的帧调用`frame_queue_unref_item`来解除引用。因此，ffplay这里在`keep_last`为1且`rindex_shown为0`，即第一次进入`frame_queue_next`这个函数的时候，会将`f->rindex_shown`置1，然后直接返回。这个操作使得第一次`frame_queue_next`之后`rindex`不变，和上次播放的那一帧的`index`一样，同时由于函数直接返回了，自然不会去释放第一帧。随后，在`frame_queue_peek_readable`的逻辑里面，我们可以看到，由于这个时候`rindex_show`已经恒为1了，所以每次返回的其实是队首的后一帧，取出的帧依然是新的下一帧。然后，每次进到`frame_queue_next`里面后，释放的其实就是上上帧，这样可以一直保证队列里面队首就是被`keep_last`保留的上一个播放完毕的帧，而队首的下一帧就是`frame_queue_peek_readable`取出的被送去播放的帧，算法设计与实现可谓妙哉妙哉。
+
+```cpp
+static void frame_queue_next(FrameQueue *f)
+{
+    if (f->keep_last && !f->rindex_shown)
+    {
+        f->rindex_shown = 1;
+        return;
+    }
+    frame_queue_unref_item(&f->queue[f->rindex]);
+    if (++f->rindex == f->max_size)
+        f->rindex = 0;
+    SDL_LockMutex(f->mutex);
+    f->size--;
+    SDL_CondSignal(f->cond);
+    SDL_UnlockMutex(f->mutex);
 }
 ```
 
