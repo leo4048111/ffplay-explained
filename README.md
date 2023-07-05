@@ -266,4 +266,30 @@ typedef struct FrameQueue
 
 可见这里`FrameQueue`中的`Frame`存储和`PacketQueue`不同，没有使用`AVFifo *`，而是通过一个循环数组`queue`来模拟队列，`rindex`指向当前读取的位置（即队头），`windex`指向当前写入的位置（即队尾），两者之间就是队列的数据范围。其中，`Frame`的数据都是从`pktq`指向的`PacketQueue`中解码得到的，`Frame`结构中就是`AVFrame`的数据外加一些其它的不同类型`Frame`参数，这样的设计应该是为了使得`Frame`结构能够同时存储视音频和字幕等不同类型的帧，这里不再赘述。下面结合对于`FrameQueue`结构体的操作，简要阐述这里面变量的作用：
 
-+ 
++ `frame_queue_init`：该方法用来初始化一个`FrameQueue`，其中变量的初始化操作很容易理解，可以直接看源代码。注意`f->max_size = FFMIN(max_size, FRAME_QUEUE_SIZE);`一句，队列的理论最大大小是`FRAME_QUEUE_SIZE`即开辟的数组大小，但是实际上用的时候的`max_size`是可能小于`FRAME_QUEUE_SIZE`的，具体取决于初始化时传的参数。还有`f->keep_last = !!keep_last;`的写法本人第一次见，应该是因为`c`语言没有`bool`关键字，而`keep_last`在逻辑上又是一个布尔值，所以为了防止传进来非`0`和`1`的初始化数值，比如说`999`，用`!!`可以强制将这种数值转成`1`，这个`trick`学到了。
+
+```cpp
+static int frame_queue_init(FrameQueue *f, PacketQueue *pktq, int max_size, int keep_last)
+{
+    int i;
+    memset(f, 0, sizeof(FrameQueue));
+    if (!(f->mutex = SDL_CreateMutex()))
+    {
+        av_log(NULL, AV_LOG_FATAL, "SDL_CreateMutex(): %s\n", SDL_GetError());
+        return AVERROR(ENOMEM);
+    }
+    if (!(f->cond = SDL_CreateCond()))
+    {
+        av_log(NULL, AV_LOG_FATAL, "SDL_CreateCond(): %s\n", SDL_GetError());
+        return AVERROR(ENOMEM);
+    }
+    f->pktq = pktq;
+    f->max_size = FFMIN(max_size, FRAME_QUEUE_SIZE);
+    f->keep_last = !!keep_last;
+    for (i = 0; i < f->max_size; i++)
+        if (!(f->queue[i].frame = av_frame_alloc()))
+            return AVERROR(ENOMEM);
+    return 0;
+}
+```
+
