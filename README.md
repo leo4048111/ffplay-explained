@@ -8,12 +8,14 @@ ffplay.c源码分析与理解
    * **[ffplay定义](#ffplay定义)**
    * **[版本信息](#版本信息)**
 * **[架构分析](#架构分析)**
-* **[重要结构体分析](#重要结构体分析)**
+* **[核心结构体分析](#核心结构体分析)**
    * **[PacketQueue](#packetqueue)**
    * **[FrameQueue](#framequeue)**
    * **[VideoState](#videostate)**
    * **[Clock](#clock)**
    * **[Decoder](#decoder)**
+* **[核心操作实现原理分析](#核心操作实现原理分析)**
+   * **[Start](#start)**
 
 # 前言
 
