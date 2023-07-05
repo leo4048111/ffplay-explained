@@ -778,5 +778,23 @@ static int audio_decode_frame(VideoState *is)
 
 ## audclk变量的设置时机与计算方法
 
-`audclk`变量的设置时机紧接着上面所述的`audio_clock`变量，在`sdl_audio_callback`调用`audio_decode_frame`并且返回后，`sdl_audio_callback`会使用`memcpy`将`Frame`中的数据拷进`SDL`，如果不够拷那就再取下一个`frame`放到`is->audio_buff`里面，直到`len == 0`为止，同时更新`is->audio_buf_index`和`is->audio_write_buf_size`到正确的位置
+`audclk`变量的设置时机紧接着上面所述的`audio_clock`变量，在`sdl_audio_callback`调用`audio_decode_frame`并且返回后，`sdl_audio_callback`会使用`memcpy`将`Frame`中的数据拷进`SDL`，如果不够拷那就再取下一个`frame`放到`is->audio_buff`里面，直到`len == 0`为止，同时更新`is->audio_buf_index`和`is->audio_write_buf_size`。紧接着，关键的计算代码如下：
+
+```cpp
+static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
+{
+...
+    /* Let's assume the audio driver that is used by SDL has two periods. */
+    if (!isnan(is->audio_clock))
+    {
+        set_clock_at(&is->audclk, is->audio_clock - (double)(2 * is->audio_hw_buf_size + is->audio_write_buf_size) / is->audio_tgt.bytes_per_sec, is->audio_clock_serial, audio_callback_time / 1000000.0);
+        sync_clock_to_slave(&is->extclk, &is->audclk);
+    }
+...
+}
+```
+
+这里可以看到，`set_clock_at`函数调用时传入的`pts`参数是`is->audio_clock - (double)(2 * is->audio_hw_buf_size + is->audio_write_buf_size) / is->audio_tgt.bytes_per_sec`。参考https://blog.csdn.net/u012117034/article/details/122873602?spm=1001.2014.3001.5506的分析内容，后面的这个`2 * is->audio_hw_buf_size + is->audio_write_buf_size`这个数值的含义其实就是当前还没有开始播的被缓存数据字节数。这个算式由两部分构成，首先是前面的`2 * is->audio_hw_buf_size`，这个是在`SDL`内部的未播完数据长度，结构如下所示：
+
+
 
