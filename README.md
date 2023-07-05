@@ -293,3 +293,20 @@ static int frame_queue_init(FrameQueue *f, PacketQueue *pktq, int max_size, int 
 }
 ```
 
++ `frame_queue_destory`：该函数用于销毁一个`FrameQueue`(这个名字比较奇怪，怀疑destory是拼错了，已经email提了MR，开发者反馈LGTM Thx，估计就是拼错了，不知道commit能不能合进去)。该函数的核心流程见源代码，做的工作比较简单，就是遍历了`f->max_size`范围下的所有`Frame`，然后解除内部对于`AVFrame`数据缓冲区的引用然后释放。（这里为啥不是从队尾即`windex`开始遍历？不太懂）
+
+```cpp
+static void frame_queue_destory(FrameQueue *f)
+{
+    int i;
+    for (i = 0; i < f->max_size; i++)
+    {
+        Frame *vp = &f->queue[i];
+        frame_queue_unref_item(vp);
+        av_frame_free(&vp->frame);
+    }
+    SDL_DestroyMutex(f->mutex);
+    SDL_DestroyCond(f->cond);
+}
+```
+
