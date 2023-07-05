@@ -795,6 +795,7 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
 ```
 
 这里可以看到，`set_clock_at`函数调用时传入的`pts`参数是`is->audio_clock - (double)(2 * is->audio_hw_buf_size + is->audio_write_buf_size) / is->audio_tgt.bytes_per_sec`。参考https://blog.csdn.net/u012117034/article/details/122873602?spm=1001.2014.3001.5506的分析内容，后面的这个`2 * is->audio_hw_buf_size + is->audio_write_buf_size`这个数值的含义其实就是当前还没有开始播的被缓存数据字节数。这个算式由两部分构成，首先是前面的`2 * is->audio_hw_buf_size`，这个是在`SDL`内部的未播完数据长度，结构如下所示：
+![image](https://github.com/leo4048111/ffplay-explained/assets/74029782/0771e0ad-4fb6-468c-9aa6-194bbf9df1ca)
 
 
 
