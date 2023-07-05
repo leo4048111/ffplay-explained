@@ -3,17 +3,17 @@ ffplay.c源码分析与理解
 
 # 目录
 * **[ffplay.c源码分析与理解](#ffplayc源码分析与理解)**
-   * **[目录](#目录)**
-   * **[前言](#前言)**
-      * **[ffplay定义](#ffplay定义)**
-      * **[版本信息](#版本信息)**
-   * **[架构分析](#架构分析)**
-   * **[重要结构体分析](#重要结构体分析)**
-      * **[PacketQueue](#packetqueue)**
-      * **[FrameQueue](#framequeue)**
-      * **[VideoState](#videostate)**
-      * **[Clock](#clock)**
-      * **[Decoder](#decoder)**
+* **[目录](#目录)**
+* **[前言](#前言)**
+   * **[ffplay定义](#ffplay定义)**
+   * **[版本信息](#版本信息)**
+* **[架构分析](#架构分析)**
+* **[重要结构体分析](#重要结构体分析)**
+   * **[PacketQueue](#packetqueue)**
+   * **[FrameQueue](#framequeue)**
+   * **[VideoState](#videostate)**
+   * **[Clock](#clock)**
+   * **[Decoder](#decoder)**
 
 # 前言
 
