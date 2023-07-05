@@ -32,7 +32,7 @@
                 <mxCell id="12" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="5" target="10">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="5" value="根据incr的秒数，再乘以字节率（比特率*8），算出要偏移多少字节，这里传入stream_seek的pos和rel的单位是字节" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#647687;fontColor=#ffffff;strokeColor=#314354;" vertex="1" parent="1">
+                <mxCell id="5" value="根据incr的秒数，再乘以字节率（比特率 / 8），算出要偏移多少字节，这里传入stream_seek的pos和rel的单位是字节" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#647687;fontColor=#ffffff;strokeColor=#314354;" vertex="1" parent="1">
                     <mxGeometry x="260" y="223.75" width="130" height="92.5" as="geometry"/>
                 </mxCell>
                 <mxCell id="15" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="8" target="14">
