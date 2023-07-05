@@ -17,6 +17,8 @@ ffplay.c源码分析与理解
 * **[核心操作实现原理分析](#核心操作实现原理分析)**
    * **[Start(开始播放)](#start开始播放)**
    * **[Pause(暂停播放)](#pause暂停播放)**
+   * **[Step(逐帧前进)](#step逐帧前进)**
+   * **[Seek（跳转播放）](#seek跳转播放)**
 
 # 前言
 
@@ -670,3 +672,29 @@ static int read_thread(void *arg) {
 可以看到，这里做了一个判断，如果暂停的状态发生了改变（比如原来在播放现在暂停，或者原来暂停现在播放），就分别调用`av_read_pause`和`av_read_play`来暂停或者继续从流/文件中读取`AVPacket`。这三处代码块通过访问`is->paused`变量的状态，执行不同的代码逻辑，从而实现了播放器的暂停功能。
 
 最后，可以发现在暂停的时候，三个`Clock`的`paused`变量也被设置为了`is->paused`的状态。这里设置的`paused`会在`get_clock`函数调用中被使用。这里`get_clock`的计算原理暂时不进行阐述，留到视音频同步算法解析部分一并分析研究。
+
+## Step(逐帧前进)
+
+在看上面ffplay暂停功能的源码实现时，我发现了在暂停时还设置了`is->step`这个变量等于0，不知道意义何在，于是简单研究了一下它的用途。最终，我定位到了`event_loop`里面的`step_to_next_frame`代码，简单看了一下逻辑，发现这是一个逐帧前进的功能实现。在`ffplay`中，对于正在播放的视频，按一下`s`键，就会往后前进一帧并且暂停，随后每按一下`s`前进一帧，视频保持暂停。这个功能实现的源码如下：
+
+```cpp
+static void step_to_next_frame(VideoState *is)
+{
+    /* if the stream is paused unpause it, then step */
+    if (is->paused)
+        stream_toggle_pause(is);
+    is->step = 1;
+}
+
+static void video_refresh(void *opaque, double *remaining_time)
+{
+    ...
+    if (is->step && !is->paused)
+        stream_toggle_pause(is);
+    ...
+}
+```
+
+这里可以看到，`step_to_next_frame`中第一步是如果视频正在暂停，就让视频继续播放。随后，将`is->step`设置为1，表示现在正在进行逐帧前进操作。随后，在下一次进入`video_refresh`的时候，会走到上面的这个代码里面。这时候视频肯定是正在播放的状态，所以里面调用了`stream_toggle_pause`就把视频暂停了，这时候紧接着代码执行当前读出的这一帧的渲染逻辑，这一帧渲染完后视频就是一个暂停的状态。然后如果再按一下`s`，视频又往后渲染一帧之后暂停，以此类推，直到用户按`space`或者`p`，调用`stream_toggle_pause`的时候清除`is->step`，才能让视频继续播放。所以可以看出，逐帧前进这个功能的实现其实就是通过按一下按键，播放器就播放一帧后暂停，再按一下就再播放一帧后暂停这样的逻辑实现的，这是`is->step`变量设置的意义所在。
+
+## Seek（跳转播放）
