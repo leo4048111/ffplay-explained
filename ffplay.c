@@ -185,16 +185,16 @@ typedef struct Frame
 
 typedef struct FrameQueue
 {
-    Frame queue[FRAME_QUEUE_SIZE];
-    int rindex;
-    int windex;
-    int size;
-    int max_size;
-    int keep_last;
-    int rindex_shown;
-    SDL_mutex *mutex;
-    SDL_cond *cond;
-    PacketQueue *pktq;
+    Frame queue[FRAME_QUEUE_SIZE]; /* 用于存放帧数据的队列 */
+    int rindex;                    /* 读索引 */
+    int windex;                    /* 写索引 */
+    int size;                      /* 队列中的帧数 */
+    int max_size;                  /* 队列最大缓存的帧数 */
+    int keep_last;                 /* 播放后是否在队列中保留上一帧不销毁 */
+    int rindex_shown;              /* 读索引是否显示 */
+    SDL_mutex *mutex;              /* 互斥锁，用于保护队列操作 */
+    SDL_cond *cond;                /* 条件变量，用于解码和播放线程的相互通知 */
+    PacketQueue *pktq;             /* 指向对应的PacketQueue，FrameQueue里面的数据就是这个队列解码出来的 */
 } FrameQueue;
 
 enum
@@ -253,7 +253,7 @@ typedef struct VideoState
 
     int av_sync_type; /* 音视频同步类型（默认同步到音频时钟，即audio master） */
 
-    double audio_clock; /* 音频播放时钟（当前帧pts+duration） */
+    double audio_clock;     /* 音频播放时钟（当前帧pts+duration） */
     int audio_clock_serial; /* 播放序列号，可被seek设置 */
 
     /* 下面4个参数在非audio master同步时使用 */
@@ -262,23 +262,23 @@ typedef struct VideoState
     double audio_diff_threshold;
     int audio_diff_avg_count;
 
-    AVStream *audio_st; /* 音频流 */
-    PacketQueue audioq; /* 音频包队列 */
-    int audio_hw_buf_size; /* SDL音频缓冲区大小（单位B) */
-    uint8_t *audio_buf; /* 指向待播放的一帧音频数据，在audio_decode_frame中被设置，如果重采样则指向重采样得到的音频数据，否则指向frame中的数据 */
-    uint8_t *audio_buf1; /* 指向重采样得到的音频数据 */
-    unsigned int audio_buf_size; /* audio_buf指向缓冲区大小（单位B) */
-    unsigned int audio_buf1_size; /* audio_buf1指向缓冲区大小（单位B) */
-    int audio_buf_index; /* 当前audio_buf中待拷贝数据的第一个字节的索引 */
-    int audio_write_buf_size; /* is->audio_buf_size - is->audio_buf_index，待拷贝字节数 */
-    int audio_volume; /* 音量 */
-    int muted; /* =1时静音 */
-    struct AudioParams audio_src; /* 音频源参数 */
+    AVStream *audio_st;                  /* 音频流 */
+    PacketQueue audioq;                  /* 音频包队列 */
+    int audio_hw_buf_size;               /* SDL音频缓冲区大小（单位B) */
+    uint8_t *audio_buf;                  /* 指向待播放的一帧音频数据，在audio_decode_frame中被设置，如果重采样则指向重采样得到的音频数据，否则指向frame中的数据 */
+    uint8_t *audio_buf1;                 /* 指向重采样得到的音频数据 */
+    unsigned int audio_buf_size;         /* audio_buf指向缓冲区大小（单位B) */
+    unsigned int audio_buf1_size;        /* audio_buf1指向缓冲区大小（单位B) */
+    int audio_buf_index;                 /* 当前audio_buf中待拷贝数据的第一个字节的索引 */
+    int audio_write_buf_size;            /* is->audio_buf_size - is->audio_buf_index，待拷贝字节数 */
+    int audio_volume;                    /* 音量 */
+    int muted;                           /* =1时静音 */
+    struct AudioParams audio_src;        /* 音频源参数 */
     struct AudioParams audio_filter_src; /* 音频滤波器源参数 */
-    struct AudioParams audio_tgt; /* 音频目标参数 */
-    struct SwrContext *swr_ctx; /* 重采样上下文 */
-    int frame_drops_early; /* 丢弃的packet数 */
-    int frame_drops_late; /* 丢弃的frame数 */
+    struct AudioParams audio_tgt;        /* 音频目标参数 */
+    struct SwrContext *swr_ctx;          /* 重采样上下文 */
+    int frame_drops_early;               /* 丢弃的packet数 */
+    int frame_drops_late;                /* 丢弃的frame数 */
 
     /* 显示模式（视频、波形...） */
     enum ShowMode
@@ -301,17 +301,17 @@ typedef struct VideoState
     SDL_Texture *sub_texture; /* 字幕纹理 */
     SDL_Texture *vid_texture; /* 视频纹理 */
 
-    int subtitle_stream; /* 字幕流索引 */
+    int subtitle_stream;   /* 字幕流索引 */
     AVStream *subtitle_st; /* 字幕流 */
     PacketQueue subtitleq; /* 字幕包队列 */
 
-    double frame_timer; /* 最后一帧播放的时刻 */
-    double frame_last_returned_time; /* 最后一帧返回的时刻 */
-    double frame_last_filter_delay; /* 最后一帧滤波延迟 */
-    int video_stream; /* 视频流索引 */
-    AVStream *video_st; /* 视频流 */
-    PacketQueue videoq; /* 视频包队列 */
-    double max_frame_duration; // maximum duration of a frame - above this, we consider the jump a timestamp discontinuity
+    double frame_timer;                 /* 最后一帧播放的时刻 */
+    double frame_last_returned_time;    /* 最后一帧返回的时刻 */
+    double frame_last_filter_delay;     /* 最后一帧滤波延迟 */
+    int video_stream;                   /* 视频流索引 */
+    AVStream *video_st;                 /* 视频流 */
+    PacketQueue videoq;                 /* 视频包队列 */
+    double max_frame_duration;          // maximum duration of a frame - above this, we consider the jump a timestamp discontinuity
     struct SwsContext *sub_convert_ctx; /* 字幕转换上下文 */
     int eof;
 
