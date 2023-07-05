@@ -428,3 +428,140 @@ static void frame_queue_next(FrameQueue *f)
 }
 ```
 
+### VideoState
+
+`VideoState`结构体声明如下：
+
+```cpp
+typedef struct VideoState
+{
+    SDL_Thread *read_tid;         /* 读线程 */
+    const AVInputFormat *iformat; /* 输入文件格式 */
+    int abort_request;            /* =1时请求退出播放 */
+    int force_refresh;            /* =1时请求立即刷新画面 */
+    int paused;                   /* =1时请求暂停播放，=0时播放 */
+    int last_paused;              /* 暂存“暂停”和“播放”状态 */
+    int queue_attachments_req;    /* =1时请求读取附加数据 */
+    int seek_req;                 /* =1时请求seek */
+    int seek_flags;               /* seek标志 */
+    int64_t seek_pos;             /* 本次seek的目标位置（当前位置+增量） */
+    int64_t seek_rel;             /* 本次seek的位置增量 */
+    int read_pause_return;        /* 读线程暂停后的返回值 */
+    AVFormatContext *ic;          /* iformat上下文 */
+    int realtime;                 /* =1为实时播放 */
+
+    Clock audclk; /* 音频时钟 */
+    Clock vidclk; /* 视频时钟 */
+    Clock extclk; /* 外部时钟 */
+
+    FrameQueue pictq; /* 视频帧队列 */
+    FrameQueue subpq; /* 字幕帧队列 */
+    FrameQueue sampq; /* 音频帧队列 */
+
+    Decoder auddec; /* 音频解码器 */
+    Decoder viddec; /* 视频解码器 */
+    Decoder subdec; /* 字幕解码器 */
+
+    int audio_stream; /* 音频流索引 */
+
+    int av_sync_type; /* 音视频同步类型（默认同步到音频时钟，即audio master） */
+
+    double audio_clock;     /* 音频播放时钟（当前帧pts+duration） */
+    int audio_clock_serial; /* 播放序列号，可被seek设置 */
+
+    /* 下面4个参数在非audio master同步时使用 */
+    double audio_diff_cum; /* used for AV difference average computation */
+    double audio_diff_avg_coef;
+    double audio_diff_threshold;
+    int audio_diff_avg_count;
+
+    AVStream *audio_st;                  /* 音频流 */
+    PacketQueue audioq;                  /* 音频包队列 */
+    int audio_hw_buf_size;               /* SDL音频缓冲区大小（单位B) */
+    uint8_t *audio_buf;                  /* 指向待播放的一帧音频数据，在audio_decode_frame中被设置，如果重采样则指向重采样得到的音频数据，否则指向frame中的数据 */
+    uint8_t *audio_buf1;                 /* 指向重采样得到的音频数据 */
+    unsigned int audio_buf_size;         /* audio_buf指向缓冲区大小（单位B) */
+    unsigned int audio_buf1_size;        /* audio_buf1指向缓冲区大小（单位B) */
+    int audio_buf_index;                 /* 当前audio_buf中待拷贝数据的第一个字节的索引 */
+    int audio_write_buf_size;            /* is->audio_buf_size - is->audio_buf_index，待拷贝字节数 */
+    int audio_volume;                    /* 音量 */
+    int muted;                           /* =1时静音 */
+    struct AudioParams audio_src;        /* 音频源参数 */
+    struct AudioParams audio_filter_src; /* 音频滤波器源参数 */
+    struct AudioParams audio_tgt;        /* 音频目标参数 */
+    struct SwrContext *swr_ctx;          /* 重采样上下文 */
+    int frame_drops_early;               /* 丢弃的packet数 */
+    int frame_drops_late;                /* 丢弃的frame数 */
+
+    /* 显示模式（视频、波形...） */
+    enum ShowMode
+    {
+        SHOW_MODE_NONE = -1,
+        SHOW_MODE_VIDEO = 0,
+        SHOW_MODE_WAVES,
+        SHOW_MODE_RDFT,
+        SHOW_MODE_NB
+    } show_mode;
+    int16_t sample_array[SAMPLE_ARRAY_SIZE];
+    int sample_array_index;
+    int last_i_start;
+    RDFTContext *rdft;
+    int rdft_bits;
+    FFTSample *rdft_data;
+    int xpos;
+    double last_vis_time;
+    SDL_Texture *vis_texture; /* 视频纹理 */
+    SDL_Texture *sub_texture; /* 字幕纹理 */
+    SDL_Texture *vid_texture; /* 视频纹理 */
+
+    int subtitle_stream;   /* 字幕流索引 */
+    AVStream *subtitle_st; /* 字幕流 */
+    PacketQueue subtitleq; /* 字幕包队列 */
+
+    double frame_timer;                 /* 最后一帧播放的时刻 */
+    double frame_last_returned_time;    /* 最后一帧返回的时刻 */
+    double frame_last_filter_delay;     /* 最后一帧滤波延迟 */
+    int video_stream;                   /* 视频流索引 */
+    AVStream *video_st;                 /* 视频流 */
+    PacketQueue videoq;                 /* 视频包队列 */
+    double max_frame_duration;          // maximum duration of a frame - above this, we consider the jump a timestamp discontinuity
+    struct SwsContext *sub_convert_ctx; /* 字幕转换上下文 */
+    int eof;
+
+    char *filename;
+    int width, height, xleft, ytop;
+    int step;
+
+    int vfilter_idx;
+    AVFilterContext *in_video_filter;  // the first filter in the video chain
+    AVFilterContext *out_video_filter; // the last filter in the video chain
+    AVFilterContext *in_audio_filter;  // the first filter in the audio chain
+    AVFilterContext *out_audio_filter; // the last filter in the audio chain
+    AVFilterGraph *agraph;             // audio filter graph
+
+    int last_video_stream, last_audio_stream, last_subtitle_stream; /* 最近的相关流索引 */
+
+    SDL_cond *continue_read_thread; /* 当读取数据队列满了后进入休眠时，可以通过该condition唤醒该读线程 */
+} VideoState;
+```
+
+`VideoState`是整个ffplay的核心管理者，所有资源的申请和释放以及线程的状态变化都是由其管理。从ffplay源码来看，这个数据结构的实例可以看做是一个单例，通过opaque指针在不同线程之间传递。虽然它是在main函数中的`stream_open`调用中通过`av_mallocz`创建，但是其中的变量会被各个线程使用和设置，因此其中的变量很多，功能也比较繁杂。涉及到比较关键的变量功能，将会在下文中针对性地进行阐述。
+
+### Clock
+
+`Clock`结构体声明如下：
+
+```cpp
+typedef struct Clock
+{
+    double pts;       /* clock base */
+    double pts_drift; /* clock base minus time at which we updated the clock */
+    double last_updated;
+    double speed;
+    int serial; /* clock is based on a packet with this serial */
+    int paused;
+    int *queue_serial; /* pointer to the current packet queue serial, used for obsolete clock detection */
+} Clock;
+```
+
+这个结构体是`ffplay`中的时钟结构。`ffplay`中一共有三个时钟，分别是`audclk`，`vidclk`和`extclk`。时钟的主要功能是参与音视频同步的计算，具体原理下文中会详细阐述。
