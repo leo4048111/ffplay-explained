@@ -803,3 +803,7 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
 
 在确定了时钟pts后，通过`set_clock_at`设置`is->audclk`的`pts`，然后将`is->extclk`外部时钟同步到`is->audclk`上，以供在音视频同步计算中使用。
 
+## 音视频同步算法解析
+
+上面我们已经知道了如何正确计算音频时钟`audclk`，这时候就已经可以开始执行音视频同步算法流程了。这个算法通过计算每一帧的延迟`remaining_time`来控制`av_usleep`的睡眠时间，从而让帧和音频的播放保持在一个可接受的不同步范围内。如果帧落后音频太多，ffplay的音视频同步算法还会进行丢帧操作，来让视频播放快速追上音频。这个同步操作主要分散在三个位置，而我们要重点阐述的核心算法在`video_refresh`函数下进行实现。首先，第一个涉及音视频同步代码逻辑的位置如下所示：
+
