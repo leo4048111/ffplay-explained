@@ -1,7 +1,7 @@
-# ffplay.c源码分析与理解
+ffplay.c源码分析与理解
+=================
 
-## 目录
-
+# 目录
 * **[ffplay.c源码分析与理解](#ffplayc源码分析与理解)**
    * **[目录](#目录)**
    * **[前言](#前言)**
@@ -11,18 +11,21 @@
    * **[重要结构体分析](#重要结构体分析)**
       * **[PacketQueue](#packetqueue)**
       * **[FrameQueue](#framequeue)**
+      * **[VideoState](#videostate)**
+      * **[Clock](#clock)**
+      * **[Decoder](#decoder)**
 
-## 前言
+# 前言
 
-### ffplay定义
+## ffplay定义
 
 **ffplay是FFmpeg提供的一个极为简单的音视频媒体播放器（由ffmpeg库和SDL库开发），可以用于音视频播放、可视化分析 ，提供音视频显示和播放相关的图像信息、音频的波形等信息。**
 
-### 版本信息
+## 版本信息
 
 **本文的ffplay源码分析基于 Jul 3, 2023，commit 50f34172e0cca2cabc5836308ec66dbf93f5f2a3的最新ffplay.c源码版本。限于本人技术水平有限，分析中如有谬误，欢迎提交issue批评指正！**
 
-## 架构分析
+# 架构分析
 
 **从ffplay.c源码中粗略分析，我发现当前ffplay播放器的架构由4种类型的线程构成，所有的线程类型和其相应的功能描述如下：**
 
@@ -34,9 +37,9 @@
 **综上所述，ffplay整体的架构图如下所示：**
 ![ffplay_arch](https://github.com/leo4048111/ffplay-explained/blob/3c16fac949b361b1a6fd24331ea47bbdb3866111/ffplay_arch.png)
 
-## 重要结构体分析
+# 重要结构体分析
 
-### PacketQueue
+## PacketQueue
 
 `PacketQueue`结构体的声明如下所示：
 
@@ -256,7 +259,7 @@ static void packet_queue_flush(PacketQueue *q)
 }
 ```
 
-### FrameQueue
+## FrameQueue
 
 `FrameQueue`结构体的声明如下所示：
 
@@ -351,7 +354,7 @@ static Frame *frame_queue_peek_writable(FrameQueue *f)
         return NULL;
 
     return &f->queue[f->windex];
-
+}
 ```
 
 + `frame_queue_push`：上面提到了，这个函数的作用就是更新`windex`和`size`。并且，由于`FrameQueue`的队列实现是一个循环数组，因此如果`f->windex`加到了`f->max_size`，那么就回到0索引，起到一个循环的效果。
@@ -428,7 +431,7 @@ static void frame_queue_next(FrameQueue *f)
 }
 ```
 
-### VideoState
+## VideoState
 
 `VideoState`结构体声明如下：
 
@@ -547,7 +550,7 @@ typedef struct VideoState
 
 `VideoState`是整个ffplay的核心管理者，所有资源的申请和释放以及线程的状态变化都是由其管理。从ffplay源码来看，这个数据结构的实例可以看做是一个单例，通过opaque指针在不同线程之间传递。虽然它是在main函数中的`stream_open`调用中通过`av_mallocz`创建，但是其中的变量会被各个线程使用和设置，因此其中的变量很多，功能也比较繁杂。涉及到比较关键的变量功能，将会在下文中针对性地进行阐述。
 
-### Clock
+## Clock
 
 `Clock`结构体声明如下：
 
@@ -566,7 +569,7 @@ typedef struct Clock
 
 这个结构体是`ffplay`中的时钟结构。`ffplay`中一共有三个时钟，分别是`audclk`，`vidclk`和`extclk`。时钟的主要功能是参与音视频同步的计算，具体原理下文中会详细阐述。
 
-### Decoder
+## Decoder
 
 `Decoder`结构体声明如下：
 
