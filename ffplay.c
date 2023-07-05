@@ -191,7 +191,7 @@ typedef struct FrameQueue
     int size;                      /* 队列中的帧数 */
     int max_size;                  /* 队列最大缓存的帧数 */
     int keep_last;                 /* 播放后是否在队列中保留上一帧不销毁 */
-    int rindex_shown;              /* 读索引是否显示 */
+    int rindex_shown;              /* keep_last的实现，读的时候实际上读的是rindex + rindex_shown，分析见下 */
     SDL_mutex *mutex;              /* 互斥锁，用于保护队列操作 */
     SDL_cond *cond;                /* 条件变量，用于解码和播放线程的相互通知 */
     PacketQueue *pktq;             /* 指向对应的PacketQueue，FrameQueue里面的数据就是这个队列解码出来的 */
