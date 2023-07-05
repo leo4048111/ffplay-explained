@@ -1,0 +1,94 @@
+<mxfile host="65bd71144e">
+    <diagram id="CqIRds3xTX2TwXZJ1fw-" name="Page-1">
+        <mxGraphModel dx="562" dy="1143" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="4" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="2" target="3">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="2" value="&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;div style=&quot;&quot;&gt;&lt;span style=&quot;color: rgb(197, 134, 192);&quot;&gt;...&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;            &lt;span style=&quot;color: #c586c0;&quot;&gt;case&lt;/span&gt; SDLK_p:&lt;/div&gt;&lt;div style=&quot;&quot;&gt;            &lt;span style=&quot;color: #c586c0;&quot;&gt;case&lt;/span&gt; SDLK_SPACE:&lt;/div&gt;&lt;div style=&quot;&quot;&gt;                &lt;span style=&quot;color: #dcdcaa;&quot;&gt;toggle_pause&lt;/span&gt;(cur_stream);&lt;/div&gt;&lt;div style=&quot;&quot;&gt;...&lt;/div&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#a20025;fontColor=#ffffff;strokeColor=#6F0000;" vertex="1" parent="1">
+                    <mxGeometry x="40" y="60" width="170" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="3" target="6">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;div style=&quot;&quot;&gt;    &lt;span style=&quot;color: rgb(220, 220, 170);&quot;&gt;stream_toggle_pause&lt;/span&gt;(is);&lt;/div&gt;&lt;div style=&quot;&quot;&gt;    &lt;span style=&quot;color: rgb(156, 220, 254);&quot;&gt;is&lt;/span&gt;-&amp;gt;&lt;span style=&quot;color: rgb(156, 220, 254);&quot;&gt;step&lt;/span&gt; &lt;span style=&quot;color: rgb(212, 212, 212);&quot;&gt;=&lt;/span&gt; &lt;span style=&quot;color: rgb(181, 206, 168);&quot;&gt;0&lt;/span&gt;;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#0050ef;fontColor=#ffffff;strokeColor=#001DBC;" vertex="1" parent="1">
+                    <mxGeometry x="37.5" y="180" width="175" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="6" target="9">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="13" value="true" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="10">
+                    <mxGeometry x="0.1414" y="-1" relative="1" as="geometry">
+                        <mxPoint x="-5" y="-1" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="12" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="6" target="11">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="14" value="false" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="12">
+                    <mxGeometry x="0.2897" relative="1" as="geometry">
+                        <mxPoint y="-9" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="6" value="之前是暂停？" style="rhombus;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#60a917;fontColor=#ffffff;strokeColor=#2D7600;" vertex="1" parent="1">
+                    <mxGeometry x="50" y="250" width="150" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="15" style="edgeStyle=none;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="9" target="11">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="330" y="375"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="9" value="&lt;span style=&quot;font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; color: rgb(220, 220, 170);&quot;&gt;set_clock&lt;/span&gt;&lt;span style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px;&quot;&gt;(&lt;/span&gt;&lt;span style=&quot;font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; color: rgb(212, 212, 212);&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span style=&quot;font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; color: rgb(156, 220, 254);&quot;&gt;is&lt;/span&gt;&lt;span style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px;&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span style=&quot;font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; color: rgb(156, 220, 254);&quot;&gt;vidclk&lt;/span&gt;&lt;span style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px;&quot;&gt;, ...)设置视频时钟&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#0050ef;fontColor=#ffffff;strokeColor=#001DBC;" vertex="1" parent="1">
+                    <mxGeometry x="240" y="250" width="180" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="17" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="11" target="16">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: rgb(220, 220, 170);&quot;&gt;set_clock&lt;/span&gt;(&lt;span style=&quot;color: rgb(212, 212, 212);&quot;&gt;&amp;amp;&lt;/span&gt;&lt;span style=&quot;color: rgb(156, 220, 254);&quot;&gt;is&lt;/span&gt;-&amp;gt;&lt;span style=&quot;color: rgb(156, 220, 254);&quot;&gt;extclk, ...)设置外部时钟&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#0050ef;fontColor=#ffffff;strokeColor=#001DBC;" vertex="1" parent="1">
+                    <mxGeometry x="32.5" y="350" width="185" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="21" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="16" target="20">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="23" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="16" target="22">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="260" y="485"/>
+                            <mxPoint x="260" y="635"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="25" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;dashed=1;fontColor=none;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="16" target="24">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="260" y="485"/>
+                            <mxPoint x="260" y="795"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="27" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;fontColor=none;" edge="1" parent="1" source="16" target="26">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="16" value="&lt;div style=&quot;font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: rgb(204, 204, 204);&quot;&gt;&lt;span style=&quot;color: rgb(156, 220, 254);&quot;&gt;is&lt;/span&gt;-&amp;gt;&lt;span style=&quot;color: rgb(156, 220, 254);&quot;&gt;paused&lt;/span&gt; &lt;span style=&quot;color: rgb(212, 212, 212);&quot;&gt;=&lt;/span&gt;&amp;nbsp;&lt;/span&gt;&lt;font style=&quot;&quot; color=&quot;#9cdcfe&quot;&gt;...&lt;/font&gt;&lt;font style=&quot;&quot; color=&quot;#cccccc&quot;&gt;&amp;nbsp;&lt;/font&gt;&lt;span style=&quot;color: rgb(212, 212, 212);&quot;&gt;=&lt;/span&gt; &lt;span style=&quot;color: rgb(212, 212, 212);&quot;&gt;!&lt;/span&gt;&lt;span style=&quot;color: rgb(156, 220, 254);&quot;&gt;is&lt;/span&gt;&lt;font style=&quot;&quot; color=&quot;#cccccc&quot;&gt;-&amp;gt;&lt;/font&gt;&lt;span style=&quot;color: rgb(156, 220, 254);&quot;&gt;paused&lt;/span&gt;&lt;font style=&quot;&quot; color=&quot;#cccccc&quot;&gt;;切换暂停状态，同时根据is-&amp;gt;paused设置三个时钟的paused&lt;/font&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#0050ef;fontColor=#ffffff;strokeColor=#001DBC;" vertex="1" parent="1">
+                    <mxGeometry x="52.5" y="440" width="145" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="20" value="&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: rgb(220, 220, 170);&quot;&gt;video_refresh()&lt;/span&gt;&lt;span style=&quot;color: rgb(220, 220, 170); font-size: 10.8px;&quot;&gt;{&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: rgb(220, 220, 170); font-size: 10.8px;&quot;&gt;...&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;font-size: 10.8px; color: rgb(197, 134, 192);&quot;&gt;if&lt;/span&gt;&lt;span style=&quot;font-size: 10.8px;&quot;&gt; (&lt;/span&gt;&lt;span style=&quot;font-size: 10.8px; color: rgb(156, 220, 254);&quot;&gt;is&lt;/span&gt;&lt;span style=&quot;font-size: 10.8px;&quot;&gt;-&amp;gt;&lt;/span&gt;&lt;span style=&quot;font-size: 10.8px; color: rgb(156, 220, 254);&quot;&gt;paused&lt;/span&gt;&lt;span style=&quot;font-size: 10.8px;&quot;&gt;)&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;div style=&quot;&quot;&gt;                &lt;span style=&quot;color: #c586c0;&quot;&gt;goto&lt;/span&gt; display;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;span style=&quot;font-size: 10.8px;&quot;&gt;...}&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#647687;fontColor=#ffffff;strokeColor=#314354;" vertex="1" parent="1">
+                    <mxGeometry x="320" y="440" width="120" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="22" value="&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;div style=&quot;font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: rgb(220, 220, 170);&quot;&gt;audio_decode_frame(){&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: rgb(220, 220, 170);&quot;&gt;...&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;div style=&quot;&quot;&gt;    &lt;span style=&quot;color: rgb(197, 134, 192);&quot;&gt;if&lt;/span&gt; (&lt;span style=&quot;color: rgb(156, 220, 254);&quot;&gt;is&lt;/span&gt;-&amp;gt;&lt;span style=&quot;color: rgb(156, 220, 254);&quot;&gt;paused&lt;/span&gt;)&lt;/div&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;font-size: 10.8px;&quot;&gt;        &lt;/span&gt;&lt;span style=&quot;font-size: 10.8px; color: rgb(197, 134, 192);&quot;&gt;return&lt;/span&gt;&lt;span style=&quot;font-size: 10.8px;&quot;&gt; &lt;/span&gt;&lt;span style=&quot;font-size: 10.8px; color: rgb(212, 212, 212);&quot;&gt;-&lt;/span&gt;&lt;span style=&quot;font-size: 10.8px; color: rgb(181, 206, 168);&quot;&gt;1&lt;/span&gt;&lt;span style=&quot;font-size: 10.8px;&quot;&gt;;&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: rgb(220, 220, 170);&quot;&gt;...}&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#647687;fontColor=#ffffff;strokeColor=#314354;" vertex="1" parent="1">
+                    <mxGeometry x="320" y="590" width="140" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="24" value="&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: rgb(220, 220, 170);&quot;&gt;read_thread(){&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: #dcdcaa;&quot;&gt;...&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;div style=&quot;color: rgb(204, 204, 204);&quot;&gt;&lt;span style=&quot;color: #c586c0;&quot;&gt;if&lt;/span&gt; (&lt;span style=&quot;color: #9cdcfe;&quot;&gt;is&lt;/span&gt;-&amp;gt;&lt;span style=&quot;color: #9cdcfe;&quot;&gt;paused&lt;/span&gt; &lt;span style=&quot;color: #d4d4d4;&quot;&gt;!=&lt;/span&gt; &lt;span style=&quot;color: #9cdcfe;&quot;&gt;is&lt;/span&gt;-&amp;gt;&lt;span style=&quot;color: #9cdcfe;&quot;&gt;last_paused&lt;/span&gt;) {&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;font color=&quot;#9cdcfe&quot;&gt;...}&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;color: rgb(204, 204, 204);&quot;&gt;            &lt;span style=&quot;color: #c586c0;&quot;&gt;else&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;font color=&quot;#dcdcaa&quot;&gt;...&lt;/font&gt;&lt;/div&gt;&lt;/div&gt;&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;font-size: 10.8px;&quot;&gt;        }&lt;/span&gt;&lt;span style=&quot;color: rgb(220, 220, 170);&quot;&gt;}&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fillColor=#647687;fontColor=#ffffff;strokeColor=#314354;" vertex="1" parent="1">
+                    <mxGeometry x="320" y="730" width="250" height="130" as="geometry"/>
+                </mxCell>
+                <mxCell id="26" value="&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: rgb(220, 220, 170);&quot;&gt;get_clock(){&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: #dcdcaa;&quot;&gt;...&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;div style=&quot;font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;div&gt;    &lt;span style=&quot;color: #c586c0;&quot;&gt;if&lt;/span&gt; (&lt;span style=&quot;color: #9cdcfe;&quot;&gt;c&lt;/span&gt;-&amp;gt;&lt;span style=&quot;color: #9cdcfe;&quot;&gt;paused&lt;/span&gt;)&lt;/div&gt;&lt;div&gt;    {&lt;/div&gt;&lt;div&gt;        &lt;span style=&quot;color: #c586c0;&quot;&gt;return&lt;/span&gt; &lt;span style=&quot;color: #9cdcfe;&quot;&gt;c&lt;/span&gt;-&amp;gt;&lt;span style=&quot;color: #9cdcfe;&quot;&gt;pts&lt;/span&gt;;&lt;/div&gt;&lt;div&gt;    }&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;div style=&quot;color: rgb(204, 204, 204); font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 10.8px; line-height: 16px;&quot;&gt;&lt;span style=&quot;color: rgb(220, 220, 170);&quot;&gt;}&lt;/span&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;labelBackgroundColor=none;fontColor=#ffffff;fillColor=#647687;strokeColor=#314354;" vertex="1" parent="1">
+                    <mxGeometry x="65" y="585" width="120" height="125" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
