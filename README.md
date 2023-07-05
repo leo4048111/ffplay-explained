@@ -37,7 +37,7 @@ ffplay.c源码分析与理解
 **综上所述，ffplay整体的架构图如下所示：**
 ![ffplay_arch](https://github.com/leo4048111/ffplay-explained/blob/3c16fac949b361b1a6fd24331ea47bbdb3866111/ffplay_arch.png)
 
-# 重要结构体分析
+# 核心结构体分析
 
 ## PacketQueue
 
@@ -592,3 +592,15 @@ typedef struct Decoder
 ```
 
 该结构体主要是封装了`ffmpeg`中的`AVCodecContext*`解码器上下文，在这个基础上加上了一些其它参数，比如说取`Packet`的队列指针，解码器线程`tid`等等。同样，这里面的参数在用到的时候我再进行详细研究分析。
+
+# 核心操作实现原理分析
+
+## Start
+
+ffplay的start过程基本上已经在上文中的架构图中能够比较清晰地呈现了，这里我再用一张图更加具体地给出ffplay的start过程中相关重要的函数调用逻辑和线程之间的数据通路，如下：
+
+![ffplay_play](https://github.com/leo4048111/ffplay-explained/blob/c31a923825fdb9c9d974b9e603ca1150d38199fa/ffplay_play.png)
+
+流程上，大体就是从`main`的函数调用开始，先通过`stream_open`打开输入流/文件，然后初始化帧队列、包队列以及时钟结构，紧接着创建解复用线程后返回，进入`event_loop`。`event_loop`中如果没有`SDL`事件，代码就会一直运行在`refresh_loop_wait_event`的循环中，执行`video_refresh`的图像渲染逻辑。`video_refresh`中会根据`SHOW_MODE_VIDEO`是否被设置，决定是渲染波形图还是渲染视频。这里不考虑渲染波形图的情况，所以代码进入`retry:`下的逻辑。这里就是ffplay的音视频同步逻辑实现位置，具体算法待下文阐述。最后，音视频同步逻辑执行完毕后，进入`display:`下的逻辑，调用`video_display`把画面交给`SDL`渲染，然后循环往复。
+
+在解复用线程中，主要工作就是创建音视频解码线程，然后往音视频解码线程读出`Packet`的`Packet`队列（is->videoq, is->audioq）里面放入待解码的`Packets`数据。音视频解码线程创建后，不停地从各自的`PacketQueue`中取包然后解码送进`FrameQueue`，即`is->pictq`和`is->sampq`中。第一个`FrameQueue`的数据会在上面`video_refresh`的代码中被访问取出使用，而第二个`FrameQueue`中的数据会在`sdl_audio_callback`回调函数的执行逻辑中被取出然后塞进`stream`缓冲区里面送到`SDL`进行播放。
