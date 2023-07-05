@@ -173,3 +173,94 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block, int *seria
 }
 ```
 
++ `packet_queue_put`：该函数用于向`PacketQueue`中放入一个节点。在代码逻辑上，首先通过`av_packet_alloc`方法分配一个`AVPacket`，在上面的数据结构分析中我们已经可以知道这是`MyAVPacketList`中存储`Packet`数据的底层结构。随后，在分配了新的`pkt1`后，将传入的`pkt`数据引用传递给`pkt1`。随后，对于实际的`Packet`队列操作实现是在`packet_queue_put_private`函数中进行了封装，下述。
+
+```cpp
+static int packet_queue_put(PacketQueue *q, AVPacket *pkt)
+{
+    AVPacket *pkt1;
+    int ret;
+
+    pkt1 = av_packet_alloc();
+    if (!pkt1)
+    {
+        av_packet_unref(pkt);
+        return -1;
+    }
+    av_packet_move_ref(pkt1, pkt);
+
+    SDL_LockMutex(q->mutex);
+    ret = packet_queue_put_private(q, pkt1);
+    SDL_UnlockMutex(q->mutex);
+
+    if (ret < 0)
+        av_packet_free(&pkt1);
+
+    return ret;
+}
+```
+
++ `packet_queue_put_private`：该函数中封装了将`pkt`放入`PacketQueue`维护的`Packet`队列的逻辑。元素的入队采用了`av_fifo_write`进行数据拷贝，然后更新了`PacketQueue`中维护的总`pkt`个数增加1，`q->size`增加`pkt1.pkt->size + sizeof(pkt1)`（所以说这里`q->size`是队列中所有`MyAVPacketList`数据结构的大小外加其中维护的`AVPacket`数据大小。最后，将`q->duration`加上`AVPacket`的`duration`，实现了元素的入队操作。
+
+```cpp
+static int packet_queue_put_private(PacketQueue *q, AVPacket *pkt)
+{
+    MyAVPacketList pkt1;
+    int ret;
+
+    if (q->abort_request)
+        return -1;
+
+    pkt1.pkt = pkt;
+    pkt1.serial = q->serial;
+
+    ret = av_fifo_write(q->pkt_list, &pkt1, 1);
+    if (ret < 0)
+        return ret;
+    q->nb_packets++;
+    q->size += pkt1.pkt->size + sizeof(pkt1);
+    q->duration += pkt1.pkt->duration;
+    /* XXX: should duplicate packet data in DV case */
+    SDL_CondSignal(q->cond);
+    return 0;
+}
+```
+
++ `packet_queue_flush`：这个方法用于`flush`一个`PacketQueue`，具体原理从代码看比较简单，就是通过一个`while`循环读出队列中的所有`pkt`，逐个调用`av_packet_free`进行释放。最后，更新相关的队列参数，比如说队列中包总数、总大小、总时长等等。这里还有一个`q->serial++`的操作，具体作用将会在下文的重要变量功能分析中阐述。
+
+```cpp
+static void packet_queue_flush(PacketQueue *q)
+{
+    MyAVPacketList pkt1;
+
+    SDL_LockMutex(q->mutex);
+    while (av_fifo_read(q->pkt_list, &pkt1, 1) >= 0)
+        av_packet_free(&pkt1.pkt);
+    q->nb_packets = 0;
+    q->size = 0;
+    q->duration = 0;
+    q->serial++;
+    SDL_UnlockMutex(q->mutex);
+}
+```
+
+### FrameQueue
+
+`FrameQueue`结构体的声明如下所示：
+
+```cpp
+typedef struct FrameQueue
+{
+    Frame queue[FRAME_QUEUE_SIZE];
+    int rindex;
+    int windex;
+    int size;
+    int max_size;
+    int keep_last;
+    int rindex_shown;
+    SDL_mutex *mutex;
+    SDL_cond *cond;
+    PacketQueue *pktq;
+} FrameQueue;
+```
+
