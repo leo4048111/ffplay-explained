@@ -396,7 +396,7 @@ static Frame *frame_queue_peek_readable(FrameQueue *f)
 }
 ```
 
-+ `frame_queue_next`：这个函数的作用是推进队首指针`rindex`（即类似队列的pop操作）。这里注意第一句`if (f->keep_last && !f->rindex_shown) {...}`，其中的`keep_last`是在`init`的时候就写死的`1`或者`0`，表示这个队列是否需要保留播放完毕的上一帧。因为从`frame_queue_next`函数中可以看到，每次`rindex`自增前，都会对于之前已经被拿走的帧调用`frame_queue_unref_item`来解除引用。因此，ffplay这里在`keep_last`为1且`rindex_shown为0`，即第一次进入`frame_queue_next`这个函数的时候，会将`f->rindex_shown`置1，然后直接返回。这个操作使得第一次`frame_queue_next`之后`rindex`不变，和上次播放的那一帧的`index`一样，同时由于函数直接返回了，自然不会去释放第一帧。随后，在`frame_queue_peek_readable`的逻辑里面，我们可以看到，由于这个时候`rindex_show`已经恒为1了，所以每次返回的其实是队首的后一帧，取出的帧依然是新的下一帧。然后，每次进到`frame_queue_next`里面后，释放的其实就是上上帧，这样可以一直保证队列里面队首就是被`keep_last`保留的上一个播放完毕的帧，而队首的下一帧就是`frame_queue_peek_readable`取出的被送去播放的帧，算法设计与实现可谓妙哉妙哉。
++ `frame_queue_next`：这个函数的作用是推进队首指针`rindex`（即类似队列的pop操作）。这里注意第一句`if (f->keep_last && !f->rindex_shown) {...}`，其中的`keep_last`是在`init`的时候就写死的`1`或者`0`，表示这个队列是否需要保留播放完毕的上一帧。因为从`frame_queue_next`函数中可以看到，每次`rindex`自增前，都会对于之前已经被拿走的帧调用`frame_queue_unref_item`来解除引用。因此，ffplay这里在`keep_last`为1且`rindex_shown为0`，即第一次进入`frame_queue_next`这个函数的时候，会将`f->rindex_shown`置1，然后直接返回。这个操作使得第一次`frame_queue_next`之后`rindex`不变，和上次播放的那一帧的`index`一样，同时由于函数直接返回了，自然不会去释放第一帧。随后，在`frame_queue_peek_readable`的逻辑里面，我们可以看到，由于这个时候`rindex_show`已经恒为1了，所以每次返回的其实是队首的后一帧，取出的帧依然是新的下一帧。然后，每次进到`frame_queue_next`里面后，释放的其实就是上上帧，这样可以一直保证队列里面队首就是被`keep_last`保留的上一个播放完毕的帧，而队首的下一帧就是`frame_queue_peek_readable`取出的被送去播放的帧，这个设计与代码实现可谓妙哉妙哉，值得学习。
 
 ```cpp
 static void frame_queue_next(FrameQueue *f)
