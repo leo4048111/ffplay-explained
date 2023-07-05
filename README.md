@@ -565,3 +565,27 @@ typedef struct Clock
 ```
 
 这个结构体是`ffplay`中的时钟结构。`ffplay`中一共有三个时钟，分别是`audclk`，`vidclk`和`extclk`。时钟的主要功能是参与音视频同步的计算，具体原理下文中会详细阐述。
+
+### Decoder
+
+`Decoder`结构体声明如下：
+
+```cpp
+typedef struct Decoder
+{
+    AVPacket *pkt;
+    PacketQueue *queue;
+    AVCodecContext *avctx;
+    int pkt_serial;
+    int finished;
+    int packet_pending;
+    SDL_cond *empty_queue_cond;
+    int64_t start_pts;
+    AVRational start_pts_tb;
+    int64_t next_pts;
+    AVRational next_pts_tb;
+    SDL_Thread *decoder_tid;
+} Decoder;
+```
+
+该结构体主要是封装了`ffmpeg`中的`AVCodecContext*`解码器上下文，在这个基础上加上了一些其它参数，比如说取`Packet`的队列指针，解码器线程`tid`等等。同样，这里面的参数在用到的时候我再进行详细研究分析。
