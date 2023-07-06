@@ -755,6 +755,8 @@ if (is->seek_req)
 
 这里是真正实现seek操作的位置，原理是调用了`avformat_seek_file`这个函数。调用完之后，文件或者流的读取位置就被正确更新了，之后的`av_read_frame`都会从新的位置开始取出`AVPacket`。随后，ffplay会通过`packet_queue_flush`把`PacketQueue`缓存清空，同时重设外部时钟到seek到的新位置，然后清除`seek_req`的标志。最后，如果当前视频是暂停的状态，则进行一次step操作，目的是为了让播放器上显示seek到的最新位置的画面，最终实现了整体的seek操作逻辑。
 
+同时，这里还涉及到一个`serial`变量的更新。在`packet_queue_flush`之后，`PacketQueue`维护的`serial`序号会自增1。之后放进去的所有`Packet`的`serial`都会与这个序号保持一致。这时候如果解码线程从队列里面取数据，会发现取出来的`Packet`的`serial`和`Decoder`的`serial`不一致，这时候就直接扔掉不解了。更加详细的分析可以见这篇Blog分析[ffplay源码之serial变量](https://blog.csdn.net/m0_60259116/article/details/126468915?spm=1001.2014.3001.5506)。
+
 # 视音频同步算法原理与代码实现分析
 
 **这里所涵盖的函数与算法分析主要围绕音视频同步算法中所用到的相关变量设置与函数调用流程开展，先介绍例如`audclk`,`vidclk`,`audio_clock`等涉及时间计算的变量的设置时机与计算方式，最后分析ffplay所使用的视音频同步算法原理及其实现。**
