@@ -794,7 +794,7 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
 }
 ```
 
-这里可以看到，`set_clock_at`函数调用时传入的`pts`参数是`is->audio_clock - (double)(2 * is->audio_hw_buf_size + is->audio_write_buf_size) / is->audio_tgt.bytes_per_sec`。参考https://blog.csdn.net/u012117034/article/details/122873602?spm=1001.2014.3001.5506的分析内容，后面的这个`2 * is->audio_hw_buf_size + is->audio_write_buf_size`这个数值的含义其实就是当前还没有开始播的被缓存数据字节数。这个算式由两部分构成，首先是前面的`2 * is->audio_hw_buf_size`，这个是在`SDL`内部的未播完数据长度，结构如下所示：
+这里可以看到，`set_clock_at`函数调用时传入的`pts`参数是`is->audio_clock - (double)(2 * is->audio_hw_buf_size + is->audio_write_buf_size) / is->audio_tgt.bytes_per_sec`。参考CSDN博客文章[FFplay源码分析-音视频同步1](https://blog.csdn.net/u012117034/article/details/122873602?spm=1001.2014.3001.5506)的分析内容，后面的这个`2 * is->audio_hw_buf_size + is->audio_write_buf_size`这个数值的含义其实就是当前还没有开始播的被缓存数据字节数。这个算式由两部分构成，首先是前面的`2 * is->audio_hw_buf_size`，这个是在`SDL`内部的未播完数据长度，结构如下所示：
 ![image](https://github.com/leo4048111/ffplay-explained/assets/74029782/0771e0ad-4fb6-468c-9aa6-194bbf9df1ca)
 
 这里可见一段红色的，就是SDL里面正在播的数据，长度为`is->audio_hw_buf_size`，后面那个`len`就是这次`sdl_audio_callback`函数调用中我们手动拷进去的数据长度。这里注意，SDL调用`sdl_audio_callback`拿数据的时候，传进来的`len`和`audio_hw_buf_size`是恒相等的。所以，在这里的计算中，`2 * is->audio_hw_buf_size`其实是`len + is->audio_hw_buf_size`。只不过`len`变量在上面的`while`循环取数据中已经被减成0了，所以这里直接就`2 * is->audio_hw_buf_size`进行计算。然后，算式的第二部分是`is->audio_write_buf_size`，这是`is->audio_buf`中还没有被送给`SDL`的剩余帧数据长度。拿这三部分的和除以`is->audio_tgt.bytes_per_sec`，算出的就是播完这三部分所用的时间。最后，用之前算出来的播完这一帧的时间戳`is->audio_clock`，减去播完这三段的总时间，得到的就是当前音频时钟`audclk`的准确`pts`，大概的图示如下：
@@ -807,3 +807,38 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
 
 上面我们已经知道了如何正确计算音频时钟`audclk`，这时候就已经可以开始执行音视频同步算法流程了。这个算法通过计算每一帧的延迟`remaining_time`来控制`av_usleep`的睡眠时间，从而让帧和音频的播放保持在一个可接受的不同步范围内。如果帧落后音频太多，ffplay的音视频同步算法还会进行丢帧操作，来让视频播放快速追上音频。这个同步操作主要分散在三个位置，而我们要重点阐述的核心算法在`video_refresh`函数下进行实现。首先，第一个涉及音视频同步代码逻辑的位置如下所示：
 
+```cpp
+static int get_video_frame(VideoState *is, AVFrame *frame)
+{
+...
+	    if (got_picture)
+    {
+        double dpts = NAN;
+
+        if (frame->pts != AV_NOPTS_VALUE)
+            dpts = av_q2d(is->video_st->time_base) * frame->pts;
+
+        frame->sample_aspect_ratio = av_guess_sample_aspect_ratio(is->ic, is->video_st, frame);
+
+        if (framedrop > 0 || (framedrop && get_master_sync_type(is) != AV_SYNC_VIDEO_MASTER))
+        {
+            if (frame->pts != AV_NOPTS_VALUE)
+            {
+                double diff = dpts - get_master_clock(is);
+                if (!isnan(diff) && fabs(diff) < AV_NOSYNC_THRESHOLD &&
+                    diff - is->frame_last_filter_delay < 0 &&
+                    is->viddec.pkt_serial == is->vidclk.serial &&
+                    is->videoq.nb_packets)
+                {
+                    is->frame_drops_early++;
+                    av_frame_unref(frame);
+                    got_picture = 0;
+                }
+            }
+        }
+    } 
+...
+}
+```
+
+这里上面已经提到了，视频解码线程获取解码后数据的方式是调用`get_video_frame`，这个函数是对于`decoder_decode_frame`即实际调用`avcodec_receive_frame`获取解码后数据的函数的一个封装。至于为什么音频解码直接调用的就是`decoder_decode_frame`获取解码后数据，而视频解码则需要这一个封装流程，原因就在上面我贴出的这段代码。
