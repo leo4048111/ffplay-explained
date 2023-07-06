@@ -21,6 +21,8 @@ ffplay.c源码分析与理解
    * **[Seek(跳转播放)](#seek跳转播放)**
 * **[视音频同步算法原理与代码实现分析](#视音频同步算法原理与代码实现分析)**
    * **[audio_clock变量的设置时机与计算方法](#audio_clock变量的设置时机与计算方法)**
+   * **[audclk变量的设置时机与计算方法](#audclk变量的设置时机与计算方法)**
+   * **[音视频同步算法解析](#音视频同步算法解析)**
 
 # 前言
 
@@ -805,7 +807,9 @@ static void sdl_audio_callback(void *opaque, Uint8 *stream, int len)
 
 ## 音视频同步算法解析
 
-上面我们已经知道了如何正确计算音频时钟`audclk`，这时候就已经可以开始执行音视频同步算法流程了。这个算法通过计算每一帧的延迟`remaining_time`来控制`av_usleep`的睡眠时间，从而让帧和音频的播放保持在一个可接受的不同步范围内。如果帧落后音频太多，ffplay的音视频同步算法还会进行丢帧操作，来让视频播放快速追上音频。这个同步操作主要分散在三个位置，而我们要重点阐述的核心算法在`video_refresh`函数下进行实现。首先，第一个涉及音视频同步代码逻辑的位置如下所示：
+上面我们已经知道了如何正确计算音频时钟`audclk`，这时候就已经可以开始执行音视频同步算法流程了。这个算法通过计算每一帧的延迟`remaining_time`来控制`av_usleep`的睡眠时间，从而让帧和音频的播放保持在一个可接受的不同步范围内。如果帧落后音频太多，ffplay的音视频同步算法还会进行丢帧操作，来让视频播放快速追上音频。这个同步操作的代码实现据我观察主要分散在两个位置，分别由视频解码线程和主线程执行。而我们要重点阐述的核心算法位于第二个位置，处理逻辑由主线程进行执行，代码在`video_refresh`函数下进行实现。
+
+首先，第一个涉及音视频同步代码逻辑的位置如下所示：
 
 ```cpp
 static int get_video_frame(VideoState *is, AVFrame *frame)
@@ -841,4 +845,173 @@ static int get_video_frame(VideoState *is, AVFrame *frame)
 }
 ```
 
-这里上面已经提到了，视频解码线程获取解码后数据的方式是调用`get_video_frame`，这个函数是对于`decoder_decode_frame`即实际调用`avcodec_receive_frame`获取解码后数据的函数的一个封装。至于为什么音频解码直接调用的就是`decoder_decode_frame`获取解码后数据，而视频解码则需要这一个封装流程，原因就在上面我贴出的这段代码。
+这里上面已经提到了，视频解码线程获取解码后数据的方式是调用`get_video_frame`，这个函数是对于`decoder_decode_frame`即实际调用`avcodec_receive_frame`获取解码后数据的函数的一个封装。至于为什么音频解码直接调用的就是`decoder_decode_frame`获取解码后数据，而视频解码则需要这一个封装流程，原因就在上面我贴出的这段代码。因为音频解码后的数据不需要丢弃，直接往SDL里送就可以了，但是视频解码出来之后，这里先一步做了一个丢帧的操作，所以需要一层封装来wrap这个函数。从代码里来看，这里首先算了一个解码出来帧`dpts`，也就是`pts * timebase`，单位是秒。然后，如果同步模式不是`AV_SYNC_VIDEO_MASTER`，即不是以视频时钟为主时钟同步到视频（一般都不会是这种模式）的话，进入丢帧计算逻辑。先算出当前拿出来帧`dpts`和主时钟之间的差值`diff`。随后，如果这个差值在可同步阈值范围`AV_NOSYNC_THRESHOLD`内（这个阈值的作用就是控制如果差的太大就直接不走同步逻辑了），并且`diff - is->frame_last_filter_delay < 0`也就是`diff < 0`（这里的`is->frame_last_filter_delay`是个常数0），表示当前主时钟已经比拿出来的帧的`dpts`快了，也就是帧慢了。同时，在这个基础上，如果帧队列里面还有数据，就正式进入丢帧逻辑，`is->frame_drops_early++`记录丢掉的总帧数后，直接`av_frame_unref(frame);`丢帧，然后将`got_picture`设置为0，表示重新从队列取帧，直到帧的`dpts`追上甚至超过主时钟为止。所以，其实ffplay在解码的时候就已经开始进行初步的音视频同步操作了。
+
+其次，第二个涉及音视频同步的位置，就是ffplay的音视频同步核心算法实现，在`video_refresh`函数中，实现主体如下：
+
+```cpp
+/* called to display each frame */
+static void video_refresh(void *opaque, double *remaining_time)
+{
+	...
+	    if (is->video_st) {
+retry:
+        if (frame_queue_nb_remaining(&is->pictq) == 0) {
+            // nothing to do, no picture to display in the queue
+        } else {
+            double last_duration, duration, delay;
+            Frame *vp, *lastvp;
+
+            /* dequeue the picture */
+            lastvp = frame_queue_peek_last(&is->pictq);
+            vp = frame_queue_peek(&is->pictq);
+            
+			...
+			
+            /* compute nominal last_duration */
+            last_duration = vp_duration(is, lastvp, vp);
+            delay = compute_target_delay(last_duration, is);
+
+            time= av_gettime_relative()/1000000.0;
+            if (time < is->frame_timer + delay) {
+                *remaining_time = FFMIN(is->frame_timer + delay - time, *remaining_time);
+                goto display;
+            }
+
+            is->frame_timer += delay;
+            if (delay > 0 && time - is->frame_timer > AV_SYNC_THRESHOLD_MAX)
+                is->frame_timer = time;
+
+            SDL_LockMutex(is->pictq.mutex);
+            if (!isnan(vp->pts))
+                update_video_pts(is, vp->pts, vp->serial);
+            SDL_UnlockMutex(is->pictq.mutex);
+
+            if (frame_queue_nb_remaining(&is->pictq) > 1) {
+                Frame *nextvp = frame_queue_peek_next(&is->pictq);
+                duration = vp_duration(is, vp, nextvp);
+                if(!is->step && (framedrop>0 || (framedrop && get_master_sync_type(is) != AV_SYNC_VIDEO_MASTER)) && time > is->frame_timer + duration){
+                    is->frame_drops_late++;
+                    frame_queue_next(&is->pictq);
+                    goto retry;
+                }
+            }
+}
+```
+
+其中两个重要函数调用分别是`vp_duration`和`compute_target_delay`，实现原理下文中将会详细阐述。整体来看，可以看到这个音视频同步的算法的基本流程和逻辑还是非常简洁明了的，下面我们结合其代码实现进行逐行分析：
+
++ **变量声明**：上面的代码中，我已经去掉了涉及seek后同步的相关代码逻辑，以便于进行分析。首先，可以看到算法入口处声明了5个变量，其中两个`Frame* vp, *lastvp`指向当前帧和上一帧（因为视音频队列初始化的时候都设置了`keep_last`，所以能够获取到上一帧，这也是`keep_last`的意义所在）。还有3个`double`型，`last_duration`表示上一帧的长度，`duration`表示当前帧的长度，`delay`是这个算法需要输出的延迟时间，用于最后根据这个`delay`进一步算出`remaining_time`，然后调整线程入睡时间，从而控制当前帧在SDL窗口中的呈现时长，对应的源码如下：
+
+```cpp
+...
+double last_duration, duration, delay;
+Frame *vp, *lastvp;
+...
+```
+
++ **获取上一帧和当前帧：**就是调用上面的`peek_last`和`peek`函数，实现原理上文已经阐述过了，见`FrameQueue`结构体分析，这里不再赘述，直接给出对应源码：
+
+```cpp
+...
+/* dequeue the picture */
+lastvp = frame_queue_peek_last(&is->pictq);
+vp = frame_queue_peek(&is->pictq);
+...
+```
+
++ **计算`last_duration`：**这里开始，视音频同步算法正式进入计算环节。首先，这里计算了一个上一帧的`duration`。在`serial`相同即没有进行过`seek`的情况下，`vp->serial == nextvp->serial`肯定是`true`，所以进到里边的计算逻辑。这个计算也非常直观，就是拿新帧的`pts`减掉老帧的`pts`，获取一个准确的`duration`。然后如果这个`duration`算出来数据有问题（比如小于0等等），就直接用`vp`结构体里面的`vp->duration`作为结果。至于为什么不直接用`vp->duration`作为返回值，而是要算一遍`nextvp->pts - vp->pts`，个人认为可能用`pts`的这个数值的计算更加准确吧。这里也给出源码如下：
+
+```cpp
+...
+/* compute nominal last_duration */
+last_duration = vp_duration(is, lastvp, vp);
+...
+
+static double vp_duration(VideoState *is, Frame *vp, Frame *nextvp) {
+    if (vp->serial == nextvp->serial) {
+        double duration = nextvp->pts - vp->pts;
+        if (isnan(duration) || duration <= 0 || duration > is->max_frame_duration)
+            return vp->duration;
+        else
+            return duration;
+    } else {
+        return 0.0;
+    }
+}
+```
+
++ **计算`delay`：**上面算完`last_duration`之后，紧接着再算一个`delay`。可以看到，`delay`的计算步骤稍微多一点。从计算实现代码`compute_target_delay`头部开始看，首先通过变量声明引入了两个概念`sync_threshold`和`diff`，需要在这里明确一下。先说第二个`diff`，在默认情况下，一般是把视频同步到音频时钟上，那么这里的`diff`就是当前视频时钟和主时钟（也就是音频时钟）的差值。而第一个`sync_threshold`表示同步阈值，如果`diff`差值在$[-sync\_threshold, +sync\_threshold]$这个范围内，认为这时候不需要同步，因为人眼基本看不出视音频之间的不同步情况。而$diff \leq -sync\_threshold$，就说明视频太慢了，这时候就要减小`delay`甚至是丢帧来让视频赶上音频。反之$diff \geq sync\_threshold$就说明视频放的太快了，这时候就要让当前帧播放的久一点（也就是主线程睡得久一点），来让音频赶上视频。
+
+  建立了上面对于音视频同步原理的基本认知后，下面的代码就非常容易理解了。首先就是计算`diff = get_clock(&is->vidclk) - get_master_clock(is);`，然后计算一个`sync_threshold`（这里的同步阈值可以看到不是写死的，是算出来的，根据算式来看如果`delay`在$[AV\_SYNC\_THRESHOLD\_MIN, AV\_SYNC\_THRESHOLD\_MAX]$区间就是`delay`，否则就是区间两个端点）。计算完毕后，如果`diff`在可以处理的同步范围内（ffplay的逻辑是如果音视频失同步的差值太大就直接不同步了，随便放），那么分三种情况讨论。第一种`if (diff <= -sync_threshold)`就是视频太慢了，那就和上面说的一样，用`delay = FFMAX(0, delay + diff);`让`delay`变小（这个算式一般来说算出的`delay`就是0，因为`diff <= -sync_threshold`然后`sync_threshold`一般又等于`delay`）。然后第二和第三种情况都是视频比音频快，这时候根据快多少分别让`delay = delay + diff;`或者直接`delay = 2 * delay;`，很好理解，不再赘述了，算完了之后这个函数就返回了。
+
+```cpp
+...
+delay = compute_target_delay(last_duration, is);
+...
+
+static double compute_target_delay(double delay, VideoState *is)
+{
+    double sync_threshold, diff = 0;
+
+    /* update delay to follow master synchronisation source */
+    if (get_master_sync_type(is) != AV_SYNC_VIDEO_MASTER) {
+        /* if video is slave, we try to correct big delays by
+           duplicating or deleting a frame */
+        diff = get_clock(&is->vidclk) - get_master_clock(is);
+
+        /* skip or repeat frame. We take into account the
+           delay to compute the threshold. I still don't know
+           if it is the best guess */
+        sync_threshold = FFMAX(AV_SYNC_THRESHOLD_MIN, FFMIN(AV_SYNC_THRESHOLD_MAX, delay));
+        if (!isnan(diff) && fabs(diff) < is->max_frame_duration) {
+            if (diff <= -sync_threshold)
+                delay = FFMAX(0, delay + diff);
+            else if (diff >= sync_threshold && delay > AV_SYNC_FRAMEDUP_THRESHOLD)
+                delay = delay + diff;
+            else if (diff >= sync_threshold)
+                delay = 2 * delay;
+        }
+    }
+
+    av_log(NULL, AV_LOG_TRACE, "video: delay=%0.3f A-V=%f\n",
+            delay, -diff);
+
+    return delay;
+}
+```
+
++ **计算`remaining_time`后直接返回`event_loop`：**上面两个关键数据变量计算完毕后，可以开始计算最终的`remaining_time`也就是线程要睡的时间，进入渲染或者丢帧逻辑了。这部分代码的第一个分支位于`if (time < is->frame_timer + delay)`。这里的`time`是当前时刻，`is->frame_timer`是上一帧被渲染的时刻，`delay`就是刚才算出来的这帧应该显示多久的数据。`time < is->frame_timer + delay`说明当前时间段这个帧应该在`SDL`窗口中上场渲染了。这时候直接开始计算`remaining_time`。为啥这里`remaining_time`不直接等于`delay`呢？这是因为上面的各种计算代码和上一帧渲染之后走的所有代码逻辑也会耗费时间，而这段时间就是算在`delay`里面的，所以说这时候要是直接睡`delay`就太多了。建立了这个认识之后，`*remaining_time = FFMIN(is->frame_timer + delay - time, *remaining_time);`这句也非常容易理解了，就是从`delay`中把之前代码的运行时间给扣掉，然后这时候算出来的`remaining_time`就能正确被外部`event_loop`拿去当做睡的时长了。
+
+```cpp
+time= av_gettime_relative()/1000000.0;
+if (time < is->frame_timer + delay) {
+    *remaining_time = FFMIN(is->frame_timer + delay - time, *remaining_time);
+    goto display;
+}
+```
+
++ **如果上面没返回，那就开始丢帧：**这里就是第二个情况，可知当前的帧按照音视频同步逻辑显示完后的时间还比当前时刻早（没赶上当前时刻），就说明这个帧已经没法同步了，就得丢掉。丢的时候，首先更新`is->frame_timer += delay;`记录一下这个帧处理完的时刻，然后用丢掉的这个帧更新视频时钟（就是`update_video_pts(is, vp->pts, vp->serial);`，因为丢帧其实可以理解为这个帧已经放完了，所以这时候视频时钟的`pts`应该同步到这个帧的`pts`）。然后如果视频`FrameQueue`也就是`is->pictq`中还有帧，那么就更新一下`duration`，然后直接取下一帧，同时丢帧总数`is->frame_drops_late++;`更新一下，重新`retry`再走一遍上面的步骤，直到取出的帧能播为止。
+
+```cpp
+is->frame_timer += delay;
+if (delay > 0 && time - is->frame_timer > AV_SYNC_THRESHOLD_MAX)
+    is->frame_timer = time;
+
+SDL_LockMutex(is->pictq.mutex);
+if (!isnan(vp->pts))
+    update_video_pts(is, vp->pts, vp->serial);
+SDL_UnlockMutex(is->pictq.mutex);
+
+if (frame_queue_nb_remaining(&is->pictq) > 1) {
+    Frame *nextvp = frame_queue_peek_next(&is->pictq);
+    duration = vp_duration(is, vp, nextvp);
+    if(!is->step && (framedrop>0 || (framedrop && get_master_sync_type(is) != AV_SYNC_VIDEO_MASTER)) && time > is->frame_timer + duration){
+        is->frame_drops_late++;
+        frame_queue_next(&is->pictq);
+        goto retry;
+    }
+}
+```
+
+上面的逻辑走完后，算出来的`remaining_time`送回到`event_loop`，里面紧接着就是一个`if (remaining_time > 0.0) av_usleep((int64_t)(remaining_time * 1000000.0));`入睡，从而完美收尾了整套音视频同步逻辑。
