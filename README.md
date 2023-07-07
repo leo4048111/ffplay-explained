@@ -1,4 +1,4 @@
-ffplay.c源码分析与理解
+![f7af508a-790d-4189-b477-2d3cd5b0b324](https://github.com/leo4048111/ffplay-explained/assets/74029782/5612a073-f8c2-4eba-8e4c-61383d96dd91)ffplay.c源码分析与理解
 =================
 
 # 目录
@@ -1017,3 +1017,10 @@ if (frame_queue_nb_remaining(&is->pictq) > 1) {
 ```
 
 上面的逻辑走完后，算出来的`remaining_time`送回到`event_loop`，里面紧接着就是一个`if (remaining_time > 0.0) av_usleep((int64_t)(remaining_time * 1000000.0));`入睡，从而完美收尾了整套音视频同步逻辑。
+
+### 2023-07-07更新：人生第一次成功给FFmpeg提PR，还被合了哈哈哈哈。虽然只是个typo，还是值得纪念一下😁
+[https://git.ffmpeg.org/gitweb/ffmpeg.git/commit/79f41a0760780d997ef02e56cec0db72303bed0a](https://git.ffmpeg.org/gitweb/ffmpeg.git/commit/79f41a0760780d997ef02e56cec0db72303bed0a)
+![image](https://github.com/leo4048111/ffplay-explained/assets/74029782/3ac469d9-6def-43cd-91bf-96033d92be44)
+![image](https://github.com/leo4048111/ffplay-explained/assets/74029782/29e0edfe-19a5-48bb-8177-f1c56f33658b)
+![image](https://github.com/leo4048111/ffplay-explained/assets/74029782/b749a1d3-815d-446d-a811-f48528719b41)
+
